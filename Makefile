@@ -10,9 +10,11 @@ CC = $(CROSS_COMPILE)gcc
 CXX = $(CROSS_COMPILE)g++
 OBJCOPY = $(CROSS_COMPILE)objcopy
 
+LIBMAPLE = external/libmaple
+
 FLAGS = -mcpu=cortex-m3 -mthumb -O -g -Wall -fno-common
 #FLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
-FLAGS += -Ilibmaple/libmaple/include -Ilibmaple/libmaple/stm32f1/include -Ilibmaple -Ilib -I.
+FLAGS += -I$(LIBMAPLE)/libmaple/include -I$(LIBMAPLE)/libmaple/stm32f1/include -I$(LIBMAPLE) -Ilib -I.
 FLAGS += -DMCU_STM32F103CB
 FLAGS += -fno-exceptions -nostartfiles -save-temps=obj
 
@@ -30,13 +32,13 @@ nppilot.elf: $(OBJ) libmaple.a libmaple-usb.a
 %.bin: %.elf
 	$(OBJCOPY) -Obinary $< $@
 
-LIBMAPLE_SRC = $(wildcard libmaple/libmaple/*.c) $(wildcard libmaple/libmaple/stm32f1/*.c)
+LIBMAPLE_SRC = $(wildcard $(LIBMAPLE)/libmaple/*.c) $(wildcard $(LIBMAPLE)/libmaple/stm32f1/*.c)
 LIBMAPLE_OBJ = $(LIBMAPLE_SRC:.c=.o)
 
 libmaple.a: $(LIBMAPLE_OBJ)
 	ar r $@ $^
 
-LIBMAPLE_USB_SRC = $(wildcard libmaple/libmaple/usb/stm32f1/*.c libmaple/libmaple/usb/usb_lib/*.c)
+LIBMAPLE_USB_SRC = $(wildcard $(LIBMAPLE)/libmaple/usb/stm32f1/*.c $(LIBMAPLE)/libmaple/usb/usb_lib/*.c)
 LIBMAPLE_USB_OBJ = $(LIBMAPLE_USB_SRC:.c=.o)
 
 libmaple-usb.a: $(LIBMAPLE_USB_OBJ)
