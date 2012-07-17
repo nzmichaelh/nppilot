@@ -58,6 +58,11 @@ void init_usb()
   usb_cdcacm_enable(GPIOB, 10);
 }
 
+static void systick()
+{
+    switcher.trigger(1);
+}
+
 void init()
 {
     flash_enable_prefetch();
@@ -69,6 +74,7 @@ void init()
     rcc_set_prescaler(RCC_PRESCALER_APB2, RCC_APB2_HCLK_DIV_1);
 
     systick_init(72000 - 1);
+    systick_attach_callback(systick);
 
     gpio_init_all();
 
@@ -89,19 +95,22 @@ static void blink()
     GPIOA_BASE->ODR ^= 1 << 6;
 }
 
+static void tick()
+{
+    Timer::tick_all();
+}
+
 MAKE_TIMER(blink, 0, 200);
 
 const Switcher::thread_entry Switcher::_dispatch[] =
 {
     blink,
+    tick,
 };
 
 int main()
 {
     for (;;) {
-        delay_us(1000);
-        Timer::tick_all();
-
         switcher.next();
         asm ("wfi");
     }
