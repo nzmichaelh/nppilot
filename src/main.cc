@@ -90,6 +90,11 @@ void init()
 
 Switcher switcher;
 
+static void heartbeat()
+{
+    usb_cdcacm_tx((const uint8_t*)" <3", 3);
+}
+
 static void blink()
 {
     GPIOA_BASE->ODR ^= 1 << 6;
@@ -101,11 +106,13 @@ static void tick()
 }
 
 MAKE_TIMER(blink, 0, 200);
+MAKE_TIMER(heartbeat, 2, 1000);
 
 const Switcher::thread_entry Switcher::_dispatch[] =
 {
     blink,
     tick,
+    heartbeat,
 };
 
 int main()
