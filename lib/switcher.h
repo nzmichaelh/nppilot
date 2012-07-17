@@ -18,3 +18,5 @@ private:
 
     static const thread_entry _dispatch[];
 };
+
+extern Switcher switcher;

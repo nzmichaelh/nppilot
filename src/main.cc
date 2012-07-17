@@ -11,6 +11,9 @@
 #include "libmaple/delay.h"
 #include "libmaple/usb_cdcacm.h"
 #include "libmaple/usb/stm32f1/usb_reg_map.h"
+
+#include <switcher.h>
+#include <timer.h>
 #include <platform/stm32/vectors.h>
 
 extern uint8_t __bss_start;
@@ -79,11 +82,28 @@ void init()
     init_usb();
 }
 
+Switcher switcher;
+
+static void blink()
+{
+    GPIOA_BASE->ODR ^= 1 << 6;
+}
+
+MAKE_TIMER(blink, 0, 200);
+
+const Switcher::thread_entry Switcher::_dispatch[] =
+{
+    blink,
+};
+
 int main()
 {
     for (;;) {
-        delay_us(200000);
-        GPIOA_BASE->ODR ^= 1 << 6;
+        delay_us(1000);
+        Timer::tick_all();
+
+        switcher.next();
+        asm ("wfi");
     }
 
     return 0;
