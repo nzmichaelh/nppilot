@@ -1,0 +1,35 @@
+# Doxyfile 1.7.6.1
+
+PROJECT_NAME           = "NP Pilot"
+PROJECT_BRIEF          = "The never complete autopilot"
+
+OUTPUT_DIRECTORY       = api
+
+JAVADOC_AUTOBRIEF      = YES
+BUILTIN_STL_SUPPORT    = YES
+EXTRACT_ALL            = YES
+CASE_SENSE_NAMES       = YES
+QUIET                  = YES
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = YES
+
+INPUT                  = .
+RECURSIVE              = YES
+EXCLUDE                = external old experiments
+
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+
+GENERATE_LATEX         = NO
+GENERATE_RTF           = NO
+GENERATE_MAN           = NO
+GENERATE_XML           = NO
+GENERATE_AUTOGEN_DEF   = NO
+GENERATE_PERLMOD       = NO
+
+PREDEFINED             =
+
+HAVE_DOT               = YES
+
+UML_LOOK               = YES
+DOT_IMAGE_FORMAT       = png
