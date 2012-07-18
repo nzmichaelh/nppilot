@@ -9,6 +9,7 @@
 #include "libmaple/flash.h"
 #include "libmaple/usart.h"
 #include "libmaple/delay.h"
+#include "libmaple/timer.h"
 #include "libmaple/usb_cdcacm.h"
 #include "libmaple/usb/stm32f1/usb_reg_map.h"
 
@@ -25,6 +26,9 @@ extern uint8_t __data_end;
 
 void init();
 int main();
+
+static const int AHBClock = 72000000;
+static const int APB1Clock = AHBClock / 2;
 
 void init_usb()
 {
@@ -85,6 +89,36 @@ void init()
     gpio_set_mode(GPIOA, 2, GPIO_AF_OUTPUT_PP);
     gpio_set_mode(GPIOA, 6, GPIO_OUTPUT_PP);
 
+    timer_init(TIMER4);
+
+    timer_gen_reg_map& regs = *TIMER4->regs.gen;
+
+    /* For PWM mode we slave two capture units.  The first measures
+     * the period and resets the counter and the second measures the
+     * high time
+     */
+    
+    /* TI1 is the input for both */
+    regs.CCMR1 &= ~(TIMER_CCMR1_CC1S | TIMER_CCMR1_CC2S);
+    regs.CCMR1 |= TIMER_CCMR1_CC1S_INPUT_TI1 | TIMER_CCMR1_CC2S_INPUT_TI1;
+
+    /* Capture and reset on the rising edge */
+    regs.CCER &= ~TIMER_CCER_CC1P;
+
+    /* Capture on the falling edge */
+    regs.CCER |= TIMER_CCER_CC2P;
+
+    /* Set the trigger and reset methods */
+    regs.SMCR &= ~(TIMER_SMCR_TS | TIMER_SMCR_SMS);
+    regs.SMCR |= TIMER_SMCR_TS_TI1FP1 | TIMER_SMCR_SMS_RESET;
+    
+    /* Enable the capture units */
+    regs.CCER |= TIMER_CCER_CC1E | TIMER_CCER_CC2E;
+
+    /* Enable the main counter */
+    regs.PSC = APB1Clock / 1000000;
+    regs.CR1 |= TIMER_CR1_CEN;
+
     init_usb();
 }
 
@@ -105,14 +139,39 @@ static void tick()
     Timer::tick_all();
 }
 
+MAKE_TIMER(expired, -1, Timer::Stopped);
+
+static int16_t ch1;
+
+static void poll()
+{
+    timer_gen_reg_map& regs = *TIMER4->regs.gen;
+
+    uint32_t sr = regs.SR;
+
+    if ((sr & TIMER_SR_CC2IF) != 0) {
+        ch1 = regs.CCR2;
+        timer_expired.start(1000);
+    }
+
+    if (!timer_expired.running()) {
+        ch1 = -1;
+    }
+
+    usart_putudec(USART2, ch1);
+    usart_putstr(USART2, "\r\n");
+}
+
 MAKE_TIMER(blink, 0, 200);
 MAKE_TIMER(heartbeat, 2, 1000);
+MAKE_TIMER(poll, 3, 100);
 
 const Switcher::thread_entry Switcher::_dispatch[] =
 {
     blink,
     tick,
     heartbeat,
+    poll,
 };
 
 int main()

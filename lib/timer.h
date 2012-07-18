@@ -29,6 +29,7 @@ public:
     void stop() { _remain = Stopped; }
     void start(int remain) { _remain = remain; }
 
+    bool running() const { return _remain < Reserved; }
     static void tick_all();
 
 private:

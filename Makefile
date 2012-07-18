@@ -12,11 +12,13 @@ OBJCOPY = $(CROSS_COMPILE)objcopy
 
 LIBMAPLE = external/libmaple
 
-FLAGS = -mcpu=cortex-m3 -mthumb -O -g -Wall -fno-common
-#FLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
-FLAGS += -I$(LIBMAPLE)/libmaple/include -I$(LIBMAPLE)/libmaple/stm32f1/include -I$(LIBMAPLE) -Ilib -I.
+FLAGS = -mcpu=cortex-m3 -mthumb -Os -g -Wall -fno-common -fno-section-anchors
+FLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
+FLAGS += -I$(LIBMAPLE)/libmaple/include -I$(LIBMAPLE)/libmaple -I$(LIBMAPLE)/libmaple/usb/usb_lib -I$(LIBMAPLE)/libmaple/stm32f1/include -I$(LIBMAPLE) -Ilib -I.
 FLAGS += -DMCU_STM32F103CB
 FLAGS += -fno-exceptions -nostartfiles -save-temps=obj
+
+CFLAGS = $(FLAGS)
 
 CXXFLAGS = $(FLAGS)
 CXXFLAGS += -std=gnu++0x
@@ -49,5 +51,7 @@ go: nppilot.bin
 	tools/opuploadtool -p $< -d 0
 	tools/opuploadtool -j
 
+ALL_OBJ = $(OBJ) $(LIBMAPLE_USB_OBJ) $(LIBMAPLE_OBJ)
+
 clean:
-	rm -f $(OBJ) $(OBJ:.o=.ii) $(OBJ:.o=.s) *.elf *.bin *.a
+	rm -f $(ALL_OBJ) $(ALL_OBJ:.o=.ii) $(ALL_OBJ:.o=.s) *.elf *.bin *.a
