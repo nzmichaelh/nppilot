@@ -7,6 +7,12 @@ SECTIONS
 	.vectors : { KEEP(*(.vectors)) }
 	. = 0x08003200;
 	.text : ALIGN(4) { *(.text) *(.text.*) *(.ARM.extab* .gnu.linkonce.armextab.*) _etext = .; }
+        .init_array : { __init_array_start = .;
+                    KEEP (*(SORT(.init_array.*)))
+                    KEEP (*(.init_array))
+                    __init_array_end = .;
+        }
+
 	.timers.fixed : { *(.timers.fixed) }
         .rodata : ALIGN(4) { *(.rodata) *(.rodata.*) . = ALIGN(4); _erodata = .; }
 	.timers.ro : ALIGN(4) { __timers_ro_start = .; KEEP(*(.timers.ro)); __timers_ro_end = .; }
