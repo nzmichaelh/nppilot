@@ -304,7 +304,7 @@ static void tick()
     Timer::tick_all();
 }
 
-MAKE_TIMER(expired, -1, Timer::Stopped);
+MAKE_TIMER(timer_expired, -1, Timer::Stopped);
 
 static int get_switch(int level) {
     if (level <= (9160 + 6310)/2) {
@@ -364,9 +364,9 @@ static void poll()
     usart_putstr(USART2, "\r\n~");
 }
 
-MAKE_TIMER(blink, 0, 200);
+MAKE_TIMER(timer_blink, 0, 200);
 //MAKE_TIMER(heartbeat, 2, 1000);
-MAKE_TIMER(poll, 3, 20);
+MAKE_TIMER(timer_poll, 3, 20);
 
 const Switcher::thread_entry Switcher::_dispatch[] =
 {
