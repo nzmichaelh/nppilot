@@ -1,11 +1,11 @@
 #include "cobs.h"
 
-struct Header {
-    uint8_t id;
-    uint8_t sum;
-};
+COBSLink::COBSLink()
+    : at_(0), remain_(0)
+{
+}
 
-void COBSSink::feed(const void* abuffer, int length)
+void COBSLink::send_part(const void* abuffer, int length)
 {
     const uint8_t* buffer = (const uint8_t*)abuffer;
     const uint8_t* start = buffer;
@@ -15,25 +15,25 @@ void COBSSink::feed(const void* abuffer, int length)
         uint8_t ch = *p;
 
         if (ch == Frame) {
-            segment(start, p, false);
+            send_segment(start, p, false);
             start = p + 1;
         }
         else {
             int seen = p - start;
 
             if (seen >= Longest) {
-                segment(start, p, true);
+                send_segment(start, p, true);
                 start = p;
             }
         }
     }
 
     if (start != p) {
-        segment(start, p, true);
+        send_segment(start, p, true);
     }
 }
 
-void COBSSink::segment(const uint8_t* start, const uint8_t* end, bool no_zero)
+void COBSLink::send_segment(const uint8_t* start, const uint8_t* end, bool no_zero)
 {
     int seen = end - start;
 
@@ -49,7 +49,7 @@ void COBSSink::segment(const uint8_t* start, const uint8_t* end, bool no_zero)
     write(start, end - start);
 }
 
-void COBSSink::send(int id, const void* amsg, int length)
+void COBSLink::send(int id, const void* amsg, int length)
 {
     const uint8_t* msg = (const uint8_t*)amsg;
 
@@ -59,11 +59,76 @@ void COBSSink::send(int id, const void* amsg, int length)
         sum += msg[i];
     }
 
+    static_assert(sizeof(Header) == 2, "COBSLink::Header must be two bytes.");
     Header header = { .id = (uint8_t)id, .sum = (uint8_t)~sum  };
 
-    feed(&header, sizeof(header));
-    feed(msg, length);
+    send_part(&header, sizeof(header));
+    send_part(msg, length);
     
     uint8_t ch = Frame;
     write(&ch, 1);
+}
+
+uint8_t COBSLink::sum()
+{
+    uint8_t total = 0;
+
+    for (int i = 0; i < at_; i++) {
+        total += rx_[i];
+    }
+
+    return total;
+}
+
+void COBSLink::append(uint8_t ch)
+{
+    if (at_ >= sizeof(rx_)) {
+        at_ = sizeof(rx_) + 1;
+    } else {
+        rx_[at_++] = ch;
+    }
+}
+
+void COBSLink::feed(const uint8_t* data, int length)
+{
+    /* Rely on load hoisting to optimise at_ */
+
+    for (int i = 0; i < length; i++) {
+        uint8_t ch = *data++;
+
+        if (ch == Frame) {
+            if (at_ < sizeof(Header)) {
+                /* Too short */
+            } else if (at_ > sizeof(rx_)) {
+                /* Too long */
+            } else if (sum() != 0xFF) {
+                /* Bad checksum */
+            } else {
+                Header* pheader = (Header*)rx_;
+                dispatch(pheader->id, pheader->body, at_ - sizeof(*pheader));
+            }
+
+            /* Reset */
+            remain_ = 0;
+            at_ = 0;
+        } else {
+            /* Non framing character */
+            if (remain_ == 0) {
+                remain_ = ch - Frame;
+                zero_ = !(remain_ & NoZero);
+                remain_ &= ~NoZero;
+
+                if (zero_) {
+                    remain_--;
+                }
+            } else {
+                append(ch);
+                remain_--;
+            }
+
+            if (remain_ == 0 && zero_) {
+                append(Frame);
+            }
+        }
+    }
 }
