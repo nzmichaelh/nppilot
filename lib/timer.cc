@@ -12,7 +12,7 @@ void Timer::tick(const Timer::Fixed& fixed)
         _remain = fixed.period;
 
         if (fixed.id >= 0) {
-            switcher.trigger(fixed.id);
+            dispatch(fixed.id);
         }
     }
     else {

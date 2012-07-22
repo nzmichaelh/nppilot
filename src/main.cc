@@ -274,14 +274,19 @@ void init()
 }
 
 Switcher switcher;
-COBSSink sink;
+COBSLink sink;
 
-void COBSSink::write(const uint8_t* p, int length)
+void COBSLink::write(const uint8_t* p, int length)
 {
     for (int i = 0; i < length; ) {
         int wrote = usart_tx(USART2, p + i, length - i);
         i += wrote;
     }
+}
+
+void Timer::dispatch(int id)
+{
+    switcher.trigger(id);
 }
 
 static void heartbeat()

@@ -36,6 +36,7 @@ private:
     static const uint16_t Reserved = 0xFFFE;
 
     void tick(const Fixed& fixed);
+    void dispatch(int id);
 
     uint16_t _remain;
 };
