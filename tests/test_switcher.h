@@ -133,11 +133,17 @@ private:
     }
 };
 
-const Switcher::thread_entry Switcher::_dispatch[] =
+void Switcher::dispatch(int id)
 {
-    nullptr,
-    one,
-    nullptr,
-    nullptr,
-    four,
+    switch (id) {
+    case 1: one(); break;
+    case 4: four(); break;
+    default: TS_ASSERT(false); break;
+    }
 };
+
+#include <timer.h>
+
+void Timer::dispatch(int id)
+{
+}

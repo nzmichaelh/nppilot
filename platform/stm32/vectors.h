@@ -94,6 +94,7 @@ extern const struct Vectors vectors;
 
 void _start();
 void __irq_usb_lp_can_rx0(void);
+void __irq_usart2(void);
 void __irq_usart3(void);
 void __irq_tim2(void);
 void __irq_tim3(void);

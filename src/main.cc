@@ -17,6 +17,7 @@
 #include <switcher.h>
 #include <timer.h>
 #include <cobs.h>
+#include <usblink.h>
 #include <platform/stm32/vectors.h>
 
 #include "protocol.h"
@@ -27,6 +28,8 @@ extern uint8_t __bss_end;
 extern const uint8_t __data_load;
 extern uint8_t __data_start;
 extern uint8_t __data_end;
+
+volatile int stuck;
 
 void init();
 int main();
@@ -53,7 +56,6 @@ private:
 
 Inputs::Inputs()
 {
-    usart_putstr(USART2, "Inputs()\r\n");
 }
 
 void Inputs::irq(int channel, uint32_t ccr, __io uint32_t* pccer, int mask)
@@ -69,6 +71,9 @@ void Inputs::irq(int channel, uint32_t ccr, __io uint32_t* pccer, int mask)
 }
 
 static Inputs inputs;
+static Switcher switcher;
+static USBLink usblink;
+static COBSLink link;
 
 static void irq_timer4ch1()
 {
@@ -106,9 +111,32 @@ static void irq_timer2ch2()
     inputs.irq(5, regs.CCR2, &regs.CCER, TIMER_CCER_CC2P);
 }
 
+static void put_hex(uint32_t v)
+{
+    static const char* chars = "0123456789abcedf";
+
+    for (int i = 32-4; i >= 0; i -= 4) {
+        usart_putc(USART2, chars[(v >> i) & 0x0f]);
+    }
+}
+
+static void _systick(uint32_t* sp)
+{
+    if (++stuck == 1000) {
+        usart_putstr(USART2, "\r\nstuck at ");
+        put_hex(sp[8]);
+        usart_putstr(USART2, "\r\n");
+    }
+
+    switcher.trigger(1);
+}
+
 static void systick()
 {
-    switcher.trigger(1);
+    uint32_t* sp;
+
+    asm volatile ("mov %0, sp" : "=r" (sp));
+    _systick(sp);
 }
 
 void init_usb()
@@ -270,18 +298,12 @@ void init()
     init_usb();
 
     /* Reset after 500 ms */
-    iwdg_init(IWDG_PRE_8, 40000 / 8 * 500/1000);
+    iwdg_init(IWDG_PRE_32, 40000 / 32 * 2000/1000);
 }
-
-Switcher switcher;
-COBSLink sink;
 
 void COBSLink::write(const uint8_t* p, int length)
 {
-    for (int i = 0; i < length; ) {
-        int wrote = usart_tx(USART2, p + i, length - i);
-        i += wrote;
-    }
+    usblink.write(p, length);
 }
 
 void Timer::dispatch(int id)
@@ -289,9 +311,15 @@ void Timer::dispatch(int id)
     switcher.trigger(id);
 }
 
+void COBSLink::dispatch(int id, const void* msg, int length)
+{
+    usart_putstr(USART2, "COBSLink::dispatch\r\n");
+}
+
 static void heartbeat()
 {
-    usb_cdcacm_tx((const uint8_t*)" <3", 3);
+    Protocol::Heartbeat msg = { .version = 1, .device_id = 2 };
+    link.send('h', &msg, sizeof(msg));
 }
 
 static void blink()
@@ -322,6 +350,7 @@ static void poll()
     static int direction = 1;
 
     iwdg_feed();
+    stuck = 0;
 
     Protocol::Inputs msg = { };
 
@@ -360,34 +389,52 @@ static void poll()
 
     timer_set_compare(TIMER4, 4, 8450 + ch1);
 
-    sink.send('i', &msg, sizeof(msg));
-    usart_putstr(USART2, "\r\n~");
+    link.send('i', &msg, sizeof(msg));
+    
+    if (usb_cdcacm_data_available()) {
+        uint8_t rx[32];
+        int got = usb_cdcacm_rx(rx, sizeof(rx));
+
+        link.feed(rx, got);
+    }
 }
 
 MAKE_TIMER(timer_blink, 0, 200);
-//MAKE_TIMER(heartbeat, 2, 1000);
+MAKE_TIMER(timer_heartbeat, 2, 1000);
 MAKE_TIMER(timer_poll, 3, 20);
 
-const Switcher::thread_entry Switcher::_dispatch[] =
+void Switcher::dispatch(int id)
 {
-    blink,
-    tick,
-    heartbeat,
-    poll,
-};
+    switch (id) {
+    case 0:
+        blink();
+        break;
+    case 1:
+        tick();
+        break;
+    case 2:
+        heartbeat();
+        break;
+    case 3:
+        poll();
+        break;
+    default:
+        assert(false);
+        break;
+    }
+}
 
 int main()
 {
+    systick_uptime_millis = 0;
+
     usart_putstr(USART2, "\r\n\r\ngo\r\n");
+    usart_putudec(USART2, *(uint32_t*)0xE000ED00);
+
     for (;;) {
-//        timer41.poll(TIMER4, 1);
-//        timer32.poll(TIMER3, 2);
-//        timer33.poll(TIMER3, 3);
-//        timer34.poll(TIMER3, 4);
-//        timer21.poll(TIMER2, 1);
-//        timer22.poll(TIMER2, 2);
         switcher.next();
-//        asm ("wfi");
+        usblink.flush();
+        asm ("wfi");
     }
 
     return 0;
@@ -420,61 +467,85 @@ void _start()
   }
 }
 
+static void _irq_default(uint32_t* sp)
+{
+    uint32_t icsr = *(uint32_t*)0xE000ED04;
+    usart_putstr(USART2, "irq_default\r\n");
+    usart_putudec(USART2, icsr & 0x1FF);
+    usart_putstr(USART2, "\r\n\r\n");
+
+    for (int i = 0; i < 10; i++) {
+        usart_putudec(USART2, *sp--);
+        usart_putstr(USART2, "\r\n");
+    }
+
+    for (;;) {}
+}
+
+__attribute__((naked))
+static void irq_default()
+{
+    uint32_t* sp;
+
+    asm volatile ("mov %0, sp" : "=r" (sp));
+    _irq_default(sp);
+}
+
 __attribute__((section(".vectors")))
 const struct Vectors vectors =
 {
   .stack_top = &__stack_top,
   .reset = _start,
 
-  nullptr, nullptr, nullptr, nullptr, nullptr,
+  irq_default, irq_default, irq_default, irq_default, irq_default,
   {},
-  .svc = nullptr,
-  nullptr, 0, nullptr,
+  .svc = irq_default,
+  irq_default, 0, irq_default,
 
   .systick = __exc_systick,
 
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
 
   .usb_lp_can_rx0 = __irq_usb_lp_can_rx0,
 
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
+  irq_default,
 
   .tim2 = __irq_tim2,
   .tim3 = __irq_tim3,
   .tim4 = __irq_tim4,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
-  nullptr,
 
+  .i2c1_ev = irq_default,
+  .i2c1_er = irq_default,
+  .i2c2_ev = irq_default,
+  .i2c2_er = irq_default,
+  .spi1 = irq_default,
+  .spi2 = irq_default,
+  .usart1 = irq_default,
+  .usart2 = __irq_usart2,
   .usart3 = __irq_usart3,
 };
