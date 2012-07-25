@@ -21,12 +21,12 @@ void Switcher::next()
         }
 
         assert(!_running.item(highest));
-        assert(_dispatch[highest] != nullptr);
 
         _pending.set(highest, false);
-
         _running.set(highest, true);
-        _dispatch[highest]();
+
+        dispatch(highest);
+
         _running.set(highest, false);
     } while (true);
 }

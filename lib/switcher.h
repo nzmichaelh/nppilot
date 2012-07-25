@@ -29,10 +29,8 @@ public:
 private:
     typedef void (*thread_entry)(void);
 
+    void dispatch(int id);
+
     BitArray _running;
     BitArray _pending;
-
-    static const thread_entry _dispatch[];
 };
-
-extern Switcher switcher;
