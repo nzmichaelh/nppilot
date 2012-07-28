@@ -15,7 +15,7 @@
  *
  * Timers can trigger a thread.  Use -1 to create a detached timer.
  */
-struct Timer
+class Timer
 {
 public:
     struct Fixed
