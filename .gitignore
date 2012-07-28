@@ -5,3 +5,6 @@
 .#*
 *.bin
 *.elf
+build
+.deps
+.dirstamp

@@ -1,7 +1,18 @@
 bin_PROGRAMS = roverif.elf
 
-roverif_elf_SOURCES = roverif/main.cc
+roverif_elf_SOURCES = \
+	roverif/main.cc \
+	roverif/init.cc \
+	roverif/start.cc \
+	roverif/pwmin.cc \
+	roverif/supervisor.cc
+
 roverif_elf_LDADD = libnppilot.a libmaple.a libmaple-usb.a
+
+check_PROGRAMS = \
+	tests/runner
+
+tests_runner_LDADD = libnppilot.a
 
 lib_LIBRARIES = \
 	libmaple.a \
@@ -12,9 +23,14 @@ libnppilot_a_SOURCES = \
 	lib/cobs.cc \
 	lib/switcher.cc \
 	lib/timer.cc \
+	lib/blinker.cc \
+	lib/switch.cc \
 	platform/stm32/bitarray.cc \
 	platform/stm32/timer.cc \
 	platform/stm32/usblink.cc
+
+#	platform/posix/bitarray.cc
+
 
 libmaple_a_SOURCES = \
 	external/libmaple/libmaple/adc.c \
@@ -57,16 +73,30 @@ libmaple_usb_a_SOURCES = \
 
 LIBMAPLE = $(srcdir)/external/libmaple
 
+tests/runner.cc: $(wildcard $(srcdir)/tests/*.h)
+	$(srcdir)/external/cxxtest/bin/cxxtestgen --error-printer -o $@ $^
+
 CROSS_COMPILE = arm-none-eabi-
 CC = $(CROSS_COMPILE)gcc
 CXX = $(CROSS_COMPILE)g++
+OBJCOPY = $(CROSS_COMPILE)objcopy
 
-FLAGS = -mcpu=cortex-m3 -mthumb -Os -g -Wall -fno-common -fno-section-anchors
+FLAGS =
+FLAGS += -O0 -g -Wall -fno-common -fno-section-anchors -fno-exceptions
 FLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
-FLAGS += -I$(LIBMAPLE)/libmaple/include -I$(LIBMAPLE)/libmaple -I$(LIBMAPLE)/libmaple/usb/usb_lib -I$(LIBMAPLE)/libmaple/stm32f1/include -I$(LIBMAPLE) -I$(srcdir)/lib -I$(srcdir)
+FLAGS += -I$(srcdir)/lib -I$(srcdir) -I$(srcdir)/external/cxxtest
+FLAGS += -I$(LIBMAPLE)/libmaple/include -I$(LIBMAPLE)/libmaple -I$(LIBMAPLE)/libmaple/usb/usb_lib -I$(LIBMAPLE)/libmaple/stm32f1/include -I$(LIBMAPLE)  -I$(srcdir)/platform/stm32
+FLAGS += -mcpu=cortex-m3 -mthumb -save-temps=obj
 FLAGS += -DMCU_STM32F103CB
-FLAGS += -fno-exceptions -nostartfiles -save-temps=obj
-FLAGS += -T$(srcdir)/flash.ld
+FLAGS += -nostartfiles -T$(srcdir)/flash.ld
 
 AM_CFLAGS = $(FLAGS)
-AM_CXXFLAGS = $(FLAGS) -std=gnu++0x
+AM_CXXFLAGS = $(FLAGS) -std=gnu++0x -fno-rtti
+
+%.bin: %.elf
+	$(OBJCOPY) -Obinary $< $@
+
+go: roverif.bin
+	-[ ! -e /dev/ttyACM0 ] || python $(srcdir)/tools/reboot.py /dev/ttyACM0
+	$(srcdir)/tools/opuploadtool -p $< -d 0
+	$(srcdir)/tools/opuploadtool -j

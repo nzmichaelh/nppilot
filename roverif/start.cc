@@ -77,7 +77,7 @@ const struct Vectors vectors =
   .svc = irq_default,
   irq_default, 0, irq_default,
 
-  .systick = __exc_systick,
+  .systick = systick,
 
   irq_default,
   irq_default,

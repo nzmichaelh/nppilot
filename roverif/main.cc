@@ -16,7 +16,10 @@
 #include <cobs.h>
 #include <usblink.h>
 #include <platform/stm32/vectors.h>
+#include <switch.h>
+#include "supervisor.h"
 
+#include "roverif.h"
 #include "protocol.h"
 #include "pwmin.h"
 #include "blinker.h"
@@ -26,18 +29,12 @@ volatile int stuck;
 void init();
 int main();
 
-enum ThreadID {
-    BlinkerID,
-    SysTickID,
-    HeartbeatID,
-    PollID,
-};
-
 static PWMIn pwmin;
 static Switcher switcher;
 static USBLink usblink;
 static COBSLink link;
 static Blinker blinker;
+static Supervisor supervisor;
 
 void irq_timer4ch1()
 {
@@ -84,11 +81,12 @@ static void put_hex(uint32_t v)
     }
 }
 
+__attribute__((noinline))
 static void _systick(uint32_t* sp)
 {
     if (++stuck == 1000) {
         usart_putstr(USART2, "\r\nstuck at ");
-        put_hex(sp[8]);
+        put_hex(sp[6]);
         usart_putstr(USART2, "\r\n");
     }
 
@@ -133,6 +131,27 @@ void Blinker::update(bool level)
     }
 }
 
+void Supervisor::changed()
+{
+    switch (supervisor.state()) {
+    case Supervisor::State::Remote:
+        blinker.set(0b100000101);
+        break;
+    case Supervisor::State::RemoteArmed:
+        blinker.set(0b100001101);
+        break;
+    case Supervisor::State::Pilot:
+        blinker.set(0b111111110);
+        break;
+    case Supervisor::State::Shutdown:
+        blinker.set(0b100000001);
+        break;
+    default:
+        blinker.set(0b101);
+        break;
+    }
+}
+
 static void tick()
 {
     Timer::tick_all();
@@ -141,16 +160,6 @@ static void tick()
 MAKE_TIMER(timer_expired, -1, Timer::Stopped);
 MAKE_TIMER(blinker_tick, BlinkerID, 100);
  
-static int get_switch(int level) {
-    if (level <= (9160 + 6310)/2) {
-        return -1;
-    } else if (level <= (12000 + 9160)/2) {
-        return 0;
-    } else {
-        return 1;
-    }
-}
-
 static void poll()
 {
     static int at;
@@ -165,34 +174,11 @@ static void poll()
         msg.channel[i] = pwmin.value(i);
     }
 
+    supervisor.set_remote(msg.channel, 6);
+
     int ch1 = pwmin.value(0) - 8450;
     int out = 0;
     // 10550 8450 6300
-
-    switch (get_switch(pwmin.value(4))) {
-    case -1:
-        ch1 = -ch1;
-        break;
-    case 0: {
-        int step = pwmin.value(5) - 6500;
-        if (step < 0) step = 0;
-        step /= 16;
-        step *= direction;
-
-        at += step;
-        if (at > 2000) {
-            direction = -1;
-        } else if (at < -2000) {
-            direction = 1;
-        }
-
-        ch1 = at;
-        break;
-    }
-    case 1:
-        ch1 = +ch1;
-        break;
-    }
 
     timer_set_compare(TIMER4, 4, 8450 + ch1);
 
@@ -209,6 +195,8 @@ static void poll()
 MAKE_TIMER(timer_heartbeat, HeartbeatID, 1000);
 MAKE_TIMER(timer_poll, PollID, 20);
 
+// 8296 counts as throttle cut
+
 void Switcher::dispatch(int id)
 {
     switch (id) {
@@ -224,15 +212,31 @@ void Switcher::dispatch(int id)
     case PollID:
         poll();
         break;
+    case SupervisorID:
+        supervisor.expired();
+        break;
     default:
         assert(false);
         break;
     }
 }
 
+extern "C" usart_dev* __lm_enable_error_usart(void)
+{
+    return USART2;
+}
+
+__attribute__((noinline))
+void stick()
+{
+    for (;;) {}
+}
+
 int main()
 {
-    blinker.set(~0 ^ 1 ^ 4 ^ 32);
+    blinker.set(0b101);
+//    stick();
+
     usart_putstr(USART2, "\r\n\r\ngo\r\n");
     usart_putudec(USART2, *(uint32_t*)0xE000ED00);
 

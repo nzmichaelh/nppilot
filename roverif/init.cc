@@ -157,7 +157,6 @@ void init()
     rcc_set_prescaler(RCC_PRESCALER_APB2, RCC_APB2_HCLK_DIV_1);
 
     systick_init(72000 - 1);
-    systick_attach_callback(systick);
 
     gpio_init_all();
 

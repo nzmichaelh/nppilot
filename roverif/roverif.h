@@ -8,3 +8,11 @@ void irq_timer2ch2();
 
 void init();
 int main();
+
+enum ThreadID {
+    BlinkerID,
+    SysTickID,
+    HeartbeatID,
+    PollID,
+    SupervisorID,
+};
