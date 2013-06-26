@@ -19,6 +19,7 @@
 void _start();
 extern uint32_t __stack_top;
 
+/* Main vector table.  Pulled in by the linker script. */
 __attribute__((section(".vectors")))
 const void *vectors[] =
 {

@@ -1,4 +1,7 @@
-bin_PROGRAMS = roverif.elf
+bin_PROGRAMS = blink.elf
+
+blink_elf_SOURCES = \
+	experiments/blink.c
 
 roverif_elf_SOURCES = \
 	roverif/main.cc \
@@ -82,19 +85,28 @@ CXX = $(CROSS_COMPILE)g++
 OBJCOPY = $(CROSS_COMPILE)objcopy
 
 FLAGS =
-FLAGS += -O0 -g -Wall -fno-common -fno-section-anchors -fno-exceptions
+FLAGS += -O1 -g -Wall -fno-common -fno-section-anchors -fno-exceptions
 FLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
 FLAGS += -I$(srcdir)/lib -I$(srcdir) -I$(srcdir)/external/cxxtest
 FLAGS += -I$(LIBMAPLE)/libmaple/include -I$(LIBMAPLE)/libmaple -I$(LIBMAPLE)/libmaple/usb/usb_lib -I$(LIBMAPLE)/libmaple/stm32f1/include -I$(LIBMAPLE)  -I$(srcdir)/platform/stm32
 FLAGS += -mcpu=cortex-m3 -mthumb -save-temps=obj
 FLAGS += -DMCU_STM32F103CB
-FLAGS += -nostartfiles -T$(srcdir)/flash.ld
+FLAGS += -nostartfiles -T$(srcdir)/platform/h103/flash.ld
 
-AM_CFLAGS = $(FLAGS)
+AM_CFLAGS = $(FLAGS) -std=gnu99
 AM_CXXFLAGS = $(FLAGS) -std=gnu++0x -fno-rtti
 
 %.bin: %.elf
 	$(OBJCOPY) -Obinary $< $@
+
+OPENOCD_CMD = nc -q 1 localhost 4444
+
+run-openocd: blink.bin
+	echo reset halt | $(OPENOCD_CMD)
+	echo flash probe 0 | $(OPENOCD_CMD)
+	echo stm32f1x mass_erase 0 | $(OPENOCD_CMD)
+	echo flash write_bank 0 $(PWD)/$< 0 | $(OPENOCD_CMD)
+	echo reset run | $(OPENOCD_CMD)
 
 go: roverif.bin
 	-[ ! -e /dev/ttyACM0 ] || python $(srcdir)/tools/reboot.py /dev/ttyACM0
