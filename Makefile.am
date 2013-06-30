@@ -1,4 +1,4 @@
-bin_PROGRAMS = blink.elf
+bin_PROGRAMS = blink.elf roverif.elf
 
 blink_elf_SOURCES = \
 	experiments/blink.c
@@ -91,7 +91,7 @@ FLAGS += -I$(srcdir)/lib -I$(srcdir) -I$(srcdir)/external/cxxtest
 FLAGS += -I$(LIBMAPLE)/libmaple/include -I$(LIBMAPLE)/libmaple -I$(LIBMAPLE)/libmaple/usb/usb_lib -I$(LIBMAPLE)/libmaple/stm32f1/include -I$(LIBMAPLE)  -I$(srcdir)/platform/stm32
 FLAGS += -mcpu=cortex-m3 -mthumb -save-temps=obj
 FLAGS += -DMCU_STM32F103CB
-FLAGS += -nostartfiles -T$(srcdir)/platform/h103/flash.ld
+FLAGS += -nostartfiles -T$(srcdir)/platform/coptercontrol/flash.ld
 
 AM_CFLAGS = $(FLAGS) -std=gnu99
 AM_CXXFLAGS = $(FLAGS) -std=gnu++0x -fno-rtti
@@ -108,7 +108,7 @@ run-openocd: blink.bin
 	echo flash write_bank 0 $(PWD)/$< 0 | $(OPENOCD_CMD)
 	echo reset run | $(OPENOCD_CMD)
 
-go: roverif.bin
+run-cc: roverif.bin
 	-[ ! -e /dev/ttyACM0 ] || python $(srcdir)/tools/reboot.py /dev/ttyACM0
 	$(srcdir)/tools/opuploadtool -p $< -d 0
 	$(srcdir)/tools/opuploadtool -j

@@ -10,8 +10,8 @@
 #include "libmaple/rcc.h"
 #include "libmaple/gpio.h"
 
-/* GPIOC12 for the H103, GPIOA for the CopterControl. */
-#define PORT GPIOC_BASE
+/* GPIOC12 for the H103, GPIOA6 for the CopterControl. */
+#define PORT GPIOA_BASE
 
 /* Optimization barrier */
 #define barrier() __asm__ __volatile__("": : :"memory")
@@ -30,7 +30,7 @@ const void *vectors[] =
 /** Spin delay */
 void delay(int count)
 {
-    for (int i = 0; i < 1000*count; i++)
+    for (int i = 0; i < 10000*count; i++)
     {
       barrier();
     }
@@ -51,7 +51,7 @@ void _start()
         // Turn on the alternate function block
         | RCC_APB2ENR_AFIOEN;
 
-    // Put pins 8 through 15 into alternate function/50 MHz
+    // Put all pins 15 into open drain output function/50 MHz
     // mode.
     PORT->CRL = 0x33333333;
     PORT->CRH = 0x33333333;
