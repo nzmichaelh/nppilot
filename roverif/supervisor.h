@@ -16,7 +16,7 @@ public:
         Remote,
         RemoteArmed,
         Pilot,
-        Shutdown
+        Shutdown,
     };
 
     Supervisor();
@@ -27,6 +27,11 @@ public:
     State state() const { return state_; }
 
     void expired();
+
+    static Timer remote_seen_;
+    static Timer::Fixed remote_seen__fixed;
+    static Timer pilot_seen_;
+    static Timer::Fixed pilot_seen__fixed;
 
 private:
     static const int LostThrottle = 8296;
@@ -49,8 +54,4 @@ private:
     Switch mode_;
 
     static const Switch::Fixed mode_fixed_;
-    static Timer remote_seen_;
-    static Timer::Fixed remote_seen__fixed;
-    static Timer pilot_seen_;
-    static Timer::Fixed pilot_seen__fixed;
 };

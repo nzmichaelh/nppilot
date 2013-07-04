@@ -29,14 +29,14 @@ void _start()
   memcpy(&__data_start, &__data_load, &__data_end - &__data_start);
   memset(&__bss_start, 0, &__bss_end - &__bss_start);
 
-  init();
+  RoverIf::init();
 
   for (init_function* i = &__init_array_start; i < &__init_array_end; i++) {
       (**i)();
   }
 
   nvic_globalirq_enable();
-  main();
+  RoverIf::run();
 
   for (;;) {
   }

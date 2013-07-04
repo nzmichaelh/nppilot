@@ -1,16 +1,16 @@
-bin_PROGRAMS = blink.elf roverif.elf
+bin_PROGRAMS = roverif.elf
 
 blink_elf_SOURCES = \
 	experiments/blink.c
 
 roverif_elf_SOURCES = \
 	roverif/main.cc \
-	roverif/init.cc \
-	roverif/start.cc \
 	roverif/pwmin.cc \
-	roverif/supervisor.cc
+	roverif/supervisor.cc \
+	roverif/hal-posix.cc
 
-roverif_elf_LDADD = libnppilot.a libmaple.a libmaple-usb.a
+#roverif_elf_LDADD = libnppilot.a libmaple.a libmaple-usb.a
+roverif_elf_LDADD = libnppilot.a
 
 check_PROGRAMS = \
 	tests/runner
@@ -18,9 +18,12 @@ check_PROGRAMS = \
 tests_runner_LDADD = libnppilot.a
 
 lib_LIBRARIES = \
-	libmaple.a \
-	libmaple-usb.a \
-	libnppilot.a
+	libnppilot.a \
+	libplatform-posix.a
+
+#	libmaple.a \
+#	libmaple-usb.a \
+#
 
 libnppilot_a_SOURCES = \
 	lib/cobs.cc \
@@ -28,6 +31,17 @@ libnppilot_a_SOURCES = \
 	lib/timer.cc \
 	lib/blinker.cc \
 	lib/switch.cc \
+	lib/debug.cc \
+	platform/posix/bitarray.cc \
+	platform/posix/timer.cc \
+	platform/posix/usblink.cc
+
+libplatform_posix_a_SOURCES = \
+	platform/posix/bitarray.cc \
+	platform/posix/timer.cc \
+	platform/posix/usblink.cc
+
+libplatform_stm32_a_SOURCES = \
 	platform/stm32/bitarray.cc \
 	platform/stm32/timer.cc \
 	platform/stm32/usblink.cc
@@ -79,19 +93,21 @@ LIBMAPLE = $(srcdir)/external/libmaple
 tests/runner.cc: $(wildcard $(srcdir)/tests/*.h)
 	$(srcdir)/external/cxxtest/bin/cxxtestgen --error-printer -o $@ $^
 
-CROSS_COMPILE = arm-none-eabi-
+#CROSS_COMPILE = arm-none-eabi-
 CC = $(CROSS_COMPILE)gcc
 CXX = $(CROSS_COMPILE)g++
 OBJCOPY = $(CROSS_COMPILE)objcopy
 
 FLAGS =
 FLAGS += -O1 -g -Wall -fno-common -fno-section-anchors -fno-exceptions
-FLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
+#FLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
 FLAGS += -I$(srcdir)/lib -I$(srcdir) -I$(srcdir)/external/cxxtest
-FLAGS += -I$(LIBMAPLE)/libmaple/include -I$(LIBMAPLE)/libmaple -I$(LIBMAPLE)/libmaple/usb/usb_lib -I$(LIBMAPLE)/libmaple/stm32f1/include -I$(LIBMAPLE)  -I$(srcdir)/platform/stm32
-FLAGS += -mcpu=cortex-m3 -mthumb -save-temps=obj
-FLAGS += -DMCU_STM32F103CB
-FLAGS += -nostartfiles -T$(srcdir)/platform/coptercontrol/flash.ld
+FLAGS += -save-temps=obj
+
+#FLAGS += -I$(LIBMAPLE)/libmaple/include -I$(LIBMAPLE)/libmaple -I$(LIBMAPLE)/libmaple/usb/usb_lib -I$(LIBMAPLE)/libmaple/stm32f1/include -I$(LIBMAPLE)  -I$(srcdir)/platform/stm32
+#FLAGS += -mcpu=cortex-m3 -mthumb
+#FLAGS += -DMCU_STM32F103CB
+#FLAGS += -nostartfiles -T$(srcdir)/platform/coptercontrol/flash.ld
 
 AM_CFLAGS = $(FLAGS) -std=gnu99
 AM_CXXFLAGS = $(FLAGS) -std=gnu++0x -fno-rtti

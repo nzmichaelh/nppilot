@@ -41,6 +41,7 @@ public:
     /** Ticks all system timers, firing those that elapse. */
     static void tick_all();
 
+    static void bind(Timer& timer, const Timer::Fixed& fixed);
 private:
     static const uint16_t Reserved = 0xFFFE;
 
@@ -50,6 +51,18 @@ private:
     uint16_t _remain;
 };
 
+#ifndef TIMER_IN_SECTIONS
+#define CONCAT_IMPL( x, y ) x##y
+#define MACRO_CONCAT( x, y ) CONCAT_IMPL( x, y )
+
+#define MAKE_TIMER(_name, _id, _period)               \
+    Timer _name __attribute__((section(".timers")));  \
+    Timer::Fixed _name##_fixed                        \
+                       = { _period - 1, _id };\
+    __attribute__((constructor)) void MACRO_CONCAT(init, __LINE__) () { \
+        Timer::bind(_name, _name##_fixed); }
+
+#else
 /**
  * Make a timer called `_name` that triggers the thread `_id` and
  * has the period `_period`.  See Switcher::None and
@@ -60,3 +73,5 @@ private:
     Timer::Fixed _name##_fixed                        \
     __attribute__((section(".timers.ro"))) \
                        = { _period - 1, _id };
+
+#endif
