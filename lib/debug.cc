@@ -54,6 +54,9 @@ void Debug::vprint(const char* pmsg, va_list args)
             case 'x':
                 printn(va_arg(args, int), 16, false);
                 break;
+            case 's':
+                print(va_arg(args, char *));
+                break;
             default:
                 assert(false);
                 break;

@@ -15,7 +15,7 @@ roverif_elf_LDADD = libnppilot.a
 check_PROGRAMS = \
 	tests/runner
 
-tests_runner_LDADD = libnppilot.a
+tests_runner_LDADD = libnppilot.a -lstdc++
 
 lib_LIBRARIES = \
 	libnppilot.a \
