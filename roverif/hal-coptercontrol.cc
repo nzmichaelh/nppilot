@@ -1,16 +1,104 @@
-#include "libmaple/rcc.h"
-#include "libmaple/gpio.h"
-#include "libmaple/systick.h"
-#include "libmaple/flash.h"
-#include "libmaple/usart.h"
-#include "libmaple/delay.h"
+/*
+ * CopterControl specific implementation.
+ */
+
+#include "roverif.h"
+
+#include "libmaple/scb.h"
 #include "libmaple/timer.h"
+#include "libmaple/usart.h"
+#include "libmaple/gpio.h"
 #include "libmaple/iwdg.h"
 #include "libmaple/usb_cdcacm.h"
 #include "libmaple/usb/stm32f1/usb_reg_map.h"
+#include "libmaple/systick.h"
 
-#include "board.h"
-#include "roverif.h"
+#include <platform/stm32/vectors.h>
+
+volatile int stuck;
+
+
+void irq_timer4ch1()
+{
+    timer_gen_reg_map& regs = *TIMER4->regs.gen;
+    RoverIf::pwmin.irq(0, regs.CCR1, &regs.CCER, TIMER_CCER_CC1P);
+}
+
+void irq_timer3ch2()
+{
+    timer_gen_reg_map& regs = *TIMER3->regs.gen;
+    RoverIf::pwmin.irq(1, regs.CCR2, &regs.CCER, TIMER_CCER_CC2P);
+}
+
+void irq_timer3ch3()
+{
+    timer_gen_reg_map& regs = *TIMER3->regs.gen;
+    RoverIf::pwmin.irq(2, regs.CCR3, &regs.CCER, TIMER_CCER_CC3P);
+}
+
+void irq_timer3ch4()
+{
+    timer_gen_reg_map& regs = *TIMER3->regs.gen;
+    RoverIf::pwmin.irq(3, regs.CCR4, &regs.CCER, TIMER_CCER_CC4P);
+}
+
+void irq_timer2ch1()
+{
+    timer_gen_reg_map& regs = *TIMER2->regs.gen;
+    RoverIf::pwmin.irq(4, regs.CCR1, &regs.CCER, TIMER_CCER_CC1P);
+}
+
+void irq_timer2ch2()
+{
+    timer_gen_reg_map& regs = *TIMER2->regs.gen;
+    RoverIf::pwmin.irq(5, regs.CCR2, &regs.CCER, TIMER_CCER_CC2P);
+}
+
+__attribute__((noinline))
+static void _systick(uint32_t* sp)
+{
+    RoverIf::switcher.trigger(SysTickID);
+
+    if (++stuck == 1000) {
+        Debug::error("Stuck at %x", sp[6]);
+    }
+}
+
+void systick()
+{
+    uint32_t* sp;
+    asm volatile ("mov %0, sp" : "=r" (sp));
+    _systick(sp);
+}
+
+void RoverIf::set_status_led(bool level)
+{
+    if (level) {
+        GPIOA_BASE->ODR &= ~(1 << 6);
+    } else {
+        GPIOA_BASE->ODR |= 1 << 6;
+    }
+}
+
+void RoverIf::poll_hal()
+{
+    if (usb_cdcacm_data_available()) {
+        uint8_t rx[32];
+        int got = usb_cdcacm_rx(rx, sizeof(rx));
+        link.feed(rx, got);
+    }
+
+    iwdg_feed();
+}    
+
+void RoverIf::wait()
+{
+    asm ("wfi");
+}
+
+void Debug::putch(char ch)
+{
+}
 
 static void init_usb()
 {
@@ -146,30 +234,41 @@ static void init_timers()
     timer_attach_interrupt(TIMER2, TIMER_CC2_INTERRUPT, irq_timer2ch2);
 }
 
-void init()
+static void init_debug_usart()
 {
-    flash_enable_prefetch();
-    flash_set_latency(FLASH_WAIT_STATE_2);
+    usart_init(USART3);
+    usart_set_baud_rate(USART3, Board::APB1Clock, Board::DebugBaudRate);
+    usart_enable(USART3);
 
+    gpio_set_mode(GPIOA, 2, GPIO_AF_OUTPUT_PP);
+    gpio_set_mode(GPIOA, 6, GPIO_OUTPUT_PP);
+}
+
+static void init_clocks()
+{
     rcc_clk_init(RCC_CLKSRC_PLL, RCC_PLLSRC_HSE, RCC_PLLMUL_9);
     rcc_set_prescaler(RCC_PRESCALER_AHB, RCC_AHB_SYSCLK_DIV_1);
     rcc_set_prescaler(RCC_PRESCALER_APB1, RCC_APB1_HCLK_DIV_2);
     rcc_set_prescaler(RCC_PRESCALER_APB2, RCC_APB2_HCLK_DIV_1);
+}
 
-    systick_init(72000 - 1);
+void RoverIf::init_hal()
+{
+    /* Reset after 500 ms */
+    iwdg_init(IWDG_PRE_32, Board::LSIClock / 32 * 2000/1000);
+
+    flash_enable_prefetch();
+    flash_set_latency(FLASH_WAIT_STATE_2);
+    init_clocks();
+    init_debug_usart();
+
+    systick_init(Board::AHBClock / Board::Ticks - 1);
 
     gpio_init_all();
-
-    usart_init(USART2);
-    usart_set_baud_rate(USART2, 72000000/2, 115200);
-    usart_enable(USART2);
-
-    gpio_set_mode(GPIOA, 2, GPIO_AF_OUTPUT_PP);
-    gpio_set_mode(GPIOA, 6, GPIO_OUTPUT_PP);
-
     init_timers();
     init_usb();
+}
 
-    /* Reset after 500 ms */
-    iwdg_init(IWDG_PRE_32, 40000 / 32 * 2000/1000);
+void RoverIf::start_hal()
+{
 }
