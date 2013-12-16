@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include <initializer_list>
-
 /**
  * Ring buffer.  Thread safe if there's one producer and one
  * consumer.  Holds N-1 items.  Done inline as a template as most of
@@ -49,6 +47,7 @@ public:
         }
     }
 
+#if HAS_INITIALIZER_LIST
     /** Add a set of items.  See extend(). */
     void extend(std::initializer_list<T> list)
     {
@@ -56,6 +55,7 @@ public:
             add(item);
         }
     }
+#endif
 
     /**
      * Get a pointer to the first available item.  Returns the first
