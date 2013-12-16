@@ -7,4 +7,5 @@ public:
     static void wait();
 
     static void set_status_led(bool on);
+    static void flash();
 };

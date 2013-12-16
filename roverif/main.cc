@@ -7,24 +7,42 @@
 
 PWMIn RoverIf::pwmin;
 Switcher RoverIf::switcher;
-USBLink RoverIf::usblink;
-COBSLink RoverIf::link;
+Link RoverIf::link;
 Blinker RoverIf::blinker;
 Supervisor RoverIf::supervisor;
 
-void COBSLink::write(const uint8_t* p, int length)
+void Debug::putch(char ch)
 {
-    RoverIf::usblink.write(p, length);
+}
+
+void BitArray::set(int index, bool value)
+{
+}
+
+int BitArray::last_set() const
+{
+    return -1;
+}
+
+Link::Link()
+{
+}
+
+void Timer::bind(Timer& timer, const Timer::Fixed& fixed)
+{
+}
+
+void Timer::tick_all()
+{
+}
+
+void Link::send(int id, const void* msg, int length)
+{
 }
 
 void Timer::dispatch(int id)
 {
     RoverIf::switcher.trigger(id);
-}
-
-void COBSLink::dispatch(int id, const void* msg, int length)
-{
-    Debug::info("COBSLink::dispatch");
 }
 
 static void heartbeat()
@@ -58,7 +76,7 @@ static void tick()
 
 MAKE_TIMER(timer_expired, -1, Timer::Stopped);
 MAKE_TIMER(blinker_tick, BlinkerID, 100);
- 
+
 void RoverIf::poll()
 {
     Protocol::Inputs msg = { };
@@ -112,7 +130,13 @@ void RoverIf::run()
 
     for (;;) {
         switcher.next();
-        usblink.flush();
+        HAL::poll();
         HAL::wait();
     }
+}
+
+void run()
+{
+    RoverIf::init();
+    RoverIf::run();
 }
