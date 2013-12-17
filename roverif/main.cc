@@ -15,43 +15,15 @@ uint8_t RoverIf::ticks_;
 Timer blinker_timer;
 Timer heartbeat_timer;
 
-Link::Link()
-    : tx_at_(0), tx_end_(0)
-{
-}
-
-void* Link::start()
-{
-    if (tx_at_ >= tx_end_) {
-        return tx_;
-    } else {
-        return nullptr;
-    }
-}
-
-void Link::send(uint8_t length)
-{
-    uint8_t* p;
-    uint16_t sum1 = 0x12;
-    uint16_t sum2 = 0x34;
-    for (p = tx_; p < tx_ + length; p++) {
-        sum1 += *p;
-        if (sum1 >= 255) {
-            sum1 -= 255;
-        }
-        sum2 += sum1;
-        if (sum2 >= 255) {
-            sum2 -= 255;
-        }
-    }
-    *p = (uint8_t)(sum1 ^ sum2);
-
-    tx_end_ = length + 1;
-    tx_at_ = 0;
-}
-
 void RoverIf::heartbeat()
 {
+    static uint8_t pp = 50;
+    Servos::set(0, pp);
+    Servos::set(1, pp+20);
+
+    pp++;
+    if (pp == 200) { pp = 0; }
+
     Protocol::Heartbeat* pmsg = (Protocol::Heartbeat*)link.start();
 
     if (pmsg != nullptr) {
@@ -59,6 +31,8 @@ void RoverIf::heartbeat()
             .code = 'h',
             .version = 1,
             .device_id = 2,
+            .ticks = HAL::ticks,
+            .state = (uint8_t)supervisor.state(),
         };
         link.send(sizeof(*pmsg));
     }
@@ -80,7 +54,7 @@ void Supervisor::changed()
 
 void RoverIf::tick()
 {
-    if (blinker_timer.tick(HAL::TicksPerSecond / 8)) {
+    if (blinker_timer.tick(HAL::TicksPerSecond / 7)) {
         RoverIf::blinker.tick();
     }
     if (heartbeat_timer.tick(HAL::TicksPerSecond / 10)) {

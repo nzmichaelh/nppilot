@@ -14,4 +14,6 @@ public:
 
     static const int RedPin = 6;
     static const int GreenPin = 7;
+
+    static const uint32_t BaudRate = 38400;
 };

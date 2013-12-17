@@ -1,7 +1,8 @@
 APP = roverif
 DEVICE     = atmega168
 CLOCK      = 8000000
-PROGRAMMER = -c signalyzer-lite
+#PROGRAMMER = -c signalyzer-lite
+PROGRAMMER = -c arduino -b 19200 -P /dev/ttyUSB0
 SRC = $(wildcard *.cc)
 SRC += $(wildcard ../lib/*.cc)
 OBJ = $(SRC:%.cc=%.o)

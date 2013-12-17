@@ -17,6 +17,8 @@ struct Heartbeat {
     uint8_t code;
     uint8_t version;
     uint8_t device_id;
+    uint8_t ticks;
+    uint8_t state;
 };
 
 struct Servo {
