@@ -1,0 +1,9 @@
+#pragma once
+
+#include <stdint.h>
+
+#define UINT16_MAX  0xFFFFU
+
+namespace std
+{
+}

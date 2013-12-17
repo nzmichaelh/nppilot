@@ -1,0 +1,7 @@
+#pragma once
+
+namespace std
+{
+    template<typename T>
+    T abs(T v) { return v >= 0 ? v : -v; }
+}
