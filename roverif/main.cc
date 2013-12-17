@@ -10,128 +10,108 @@ Switcher RoverIf::switcher;
 Link RoverIf::link;
 Blinker RoverIf::blinker;
 Supervisor RoverIf::supervisor;
+uint8_t RoverIf::ticks_;
 
-void Debug::putch(char ch)
-{
-}
-
-void BitArray::set(int index, bool value)
-{
-}
-
-int BitArray::last_set() const
-{
-    return -1;
-}
+Timer blinker_timer;
+Timer heartbeat_timer;
 
 Link::Link()
+    : tx_at_(0), tx_end_(0)
 {
 }
 
-void Timer::bind(Timer& timer, const Timer::Fixed& fixed)
+void* Link::start()
 {
+    if (tx_at_ >= tx_end_) {
+        return tx_;
+    } else {
+        return nullptr;
+    }
 }
 
-void Timer::tick_all()
+void Link::send(uint8_t length)
 {
+    uint8_t* p;
+    uint16_t sum1 = 0x12;
+    uint16_t sum2 = 0x34;
+    for (p = tx_; p < tx_ + length; p++) {
+        sum1 += *p;
+        if (sum1 >= 255) {
+            sum1 -= 255;
+        }
+        sum2 += sum1;
+        if (sum2 >= 255) {
+            sum2 -= 255;
+        }
+    }
+    *p = (uint8_t)(sum1 ^ sum2);
+
+    tx_end_ = length + 1;
+    tx_at_ = 0;
 }
 
-void Link::send(int id, const void* msg, int length)
+void RoverIf::heartbeat()
 {
-}
+    Protocol::Heartbeat* pmsg = (Protocol::Heartbeat*)link.start();
 
-void Timer::dispatch(int id)
-{
-    RoverIf::switcher.trigger(id);
-}
-
-static void heartbeat()
-{
-    Protocol::Heartbeat msg = { .version = 1, .device_id = 2 };
-    RoverIf::link.send('h', &msg, sizeof(msg));
-}
-
-void Blinker::update(bool level)
-{
-    HAL::set_status_led(level);
+    if (pmsg != nullptr) {
+        *pmsg = {
+            .code = 'h',
+            .version = 1,
+            .device_id = 2,
+        };
+        link.send(sizeof(*pmsg));
+    }
 }
 
 void Supervisor::changed()
 {
-    static const uint16_t patterns[] = {
-        [State::None] =        0b101,
-        [State::Remote] =      0b100000101,
-        [State::RemoteArmed] = 0b100001101,
-        [State::Pilot] =       0b111111110,
-        [State::Shutdown] =    0b100000001,
+    static const uint8_t patterns[][2] = {
+        [State::None] =        { 0, 0b10000001 },
+        [State::Remote] =      { 0b10000001, 0 },
+        [State::RemoteArmed] = { 0b10000101, 0 },
+        [State::Pilot] =       { 0b11111110, 0 },
+        [State::Shutdown] =    { 0, 0b1011 },
     };
 
-    RoverIf::blinker.set(patterns[(int)state()]);
+    int idx = (int)state();
+    RoverIf::blinker.set(patterns[idx][0], patterns[idx][1]);
 }
 
-static void tick()
+void RoverIf::tick()
 {
-    Timer::tick_all();
+    if (blinker_timer.tick(HAL::TicksPerSecond / 8)) {
+        RoverIf::blinker.tick();
+    }
+    if (heartbeat_timer.tick(HAL::TicksPerSecond / 10)) {
+        heartbeat();
+    }
+    RoverIf::supervisor.tick();
 }
-
-MAKE_TIMER(timer_expired, -1, Timer::Stopped);
-MAKE_TIMER(blinker_tick, BlinkerID, 100);
 
 void RoverIf::poll()
 {
-    Protocol::Inputs msg = { };
-
-    for (int i = 0; i < pwmin.count(); i++) {
-        msg.channel[i] = pwmin.value(i);
-    }
-
-    supervisor.set_remote(msg.channel, 6);
-    link.send('i', &msg, sizeof(msg));
-}
-
-MAKE_TIMER(timer_heartbeat, HeartbeatID, 1000);
-MAKE_TIMER(timer_poll, PollID, 20);
-
-void Switcher::dispatch(int id)
-{
-    switch (id) {
-    case BlinkerID:
-        RoverIf::blinker.tick();
-        break;
-    case SysTickID:
-        tick();
-        break;
-    case HeartbeatID:
-        heartbeat();
-        break;
-    case PollID:
-        RoverIf::poll();
-        break;
-    case SupervisorID:
-        RoverIf::supervisor.expired();
-        break;
-    default:
-        assert(false);
-        break;
-    }
 }
 
 void RoverIf::init()
 {
     HAL::init();
+    Servos::init();
 }
 
 void RoverIf::run()
 {
     HAL::start();
-    Debug::info("roverif: start");
-
-    blinker.set(0b101);
+    blinker.set(0, 0b101);
 
     for (;;) {
-        switcher.next();
         HAL::poll();
         HAL::wait();
+
+        if (ticks_ != HAL::ticks) {
+            ticks_++;
+            tick();
+        }
     }
 }
 

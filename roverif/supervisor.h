@@ -26,12 +26,7 @@ public:
 
     State state() const { return state_; }
 
-    void expired();
-
-    static Timer remote_seen_;
-    static Timer::Fixed remote_seen__fixed;
-    static Timer pilot_seen_;
-    static Timer::Fixed pilot_seen__fixed;
+    void tick();
 
 private:
     static const int LostThrottle = 8296;
@@ -52,6 +47,8 @@ private:
     bool pilot_allowed_;
     bool pilot_wants_;
     Switch mode_;
+    Timer remote_seen_;
+    Timer pilot_seen_;
 
     static const Switch::Fixed mode_fixed_;
 };

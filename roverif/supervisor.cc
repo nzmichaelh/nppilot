@@ -31,8 +31,11 @@ void Supervisor::set_pilot(bool in_control, const uint16_t* channels, int count)
 {
 }
 
-void Supervisor::expired()
+void Supervisor::tick()
 {
+    remote_seen_.tick();
+    pilot_seen_.tick();
+
     if (!remote_seen_.running()) {
         remote_ok_ = false;
         check();
@@ -77,6 +80,3 @@ void Supervisor::shutdown()
 void Supervisor::update(const uint16_t* channels, int count)
 {
 }
-
-MAKE_TIMER(Supervisor::remote_seen_, SupervisorID, Timer::Stopped);
-MAKE_TIMER(Supervisor::pilot_seen_, SupervisorID, Timer::Stopped);

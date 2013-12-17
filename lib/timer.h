@@ -18,14 +18,8 @@
 class Timer
 {
 public:
-    struct Fixed
-    {
-        uint16_t period;
-        int16_t id;
-    };
-
     /** Special value for a stopped timer. */
-    static const uint16_t Stopped = 0xFFFF;
+    static const uint8_t Stopped = 0xFF;
 
     /** Stop the timer running. */
     void stop() { _remain = Stopped; }
@@ -38,40 +32,10 @@ public:
     /** Returns true if the timer is currently running. */
     bool running() const { return _remain < Reserved; }
 
-    /** Ticks all system timers, firing those that elapse. */
-    static void tick_all();
+    /** Tick this timer, reloading and returning true if expired. */
+    bool tick(uint8_t reload = Stopped);
 
-    static void bind(Timer& timer, const Timer::Fixed& fixed);
 private:
-    static const uint16_t Reserved = 0xFFFE;
-
-    void tick(const Fixed& fixed);
-    void dispatch(int id);
-
-    uint16_t _remain;
+    static const uint8_t Reserved = 0xFE;
+    uint8_t _remain;
 };
-
-#ifndef TIMER_IN_SECTIONS
-#define CONCAT_IMPL( x, y ) x##y
-#define MACRO_CONCAT( x, y ) CONCAT_IMPL( x, y )
-
-#define MAKE_TIMER(_name, _id, _period)               \
-    Timer _name __attribute__((section(".timers")));  \
-    Timer::Fixed _name##_fixed                        \
-                       = { _period - 1, _id };\
-    __attribute__((constructor)) void MACRO_CONCAT(init, __LINE__) () { \
-        Timer::bind(_name, _name##_fixed); }
-
-#else
-/**
- * Make a timer called `_name` that triggers the thread `_id` and
- * has the period `_period`.  See Switcher::None and
- * Timer::Stopped for detached and single shot timers.
- */
-#define MAKE_TIMER(_name, _id, _period)               \
-    Timer _name __attribute__((section(".timers")));  \
-    Timer::Fixed _name##_fixed                        \
-    __attribute__((section(".timers.ro"))) \
-                       = { _period - 1, _id };
-
-#endif
