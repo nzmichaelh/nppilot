@@ -2,7 +2,9 @@ APP = roverif
 DEVICE     = atmega168
 CLOCK      = 8000000
 #PROGRAMMER = -c signalyzer-lite
-PROGRAMMER = -c arduino -b 19200 -P /dev/ttyUSB0
+PROGRAMMER = -c arduino -b 19200 -P $(PROGRAMMER_PORT)
+PROGRAMMER_PORT = /dev/ttyO4
+
 SRC = $(wildcard *.cc)
 SRC += $(wildcard ../lib/*.cc)
 OBJ = $(SRC:%.cc=%.o)
@@ -19,10 +21,16 @@ CFLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections -pipe
 #CFLAGS += -save-temps
 CXXFLAGS = $(CFLAGS) -std=gnu++11
 AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE)
+RESET_PIN = /sys/class/gpio/gpio9/value
 
 all:	$(APP).hex
 
-flash:	all
+reset:
+	(echo 1 | sudo tee $(RESET_PIN)) && \
+	(echo 0 | sudo tee $(RESET_PIN)) && \
+	(echo 1 | sudo tee $(RESET_PIN))
+
+flash:	all reset
 	$(AVRDUDE) -U flash:w:$(APP).hex:i
 
 usb-flash: $(APP).hex
