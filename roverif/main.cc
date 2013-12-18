@@ -17,7 +17,7 @@ Timer blinker_timer;
 Timer heartbeat_timer;
 Timer pwmin_timer;
 
-void RoverIf::send_heartbeat(Protocol::Heartbeat& msg)
+void RoverIf::fill_heartbeat(Protocol::Heartbeat& msg)
 {
     msg = {
         .code = Protocol::Code::Heartbeat,
@@ -26,25 +26,22 @@ void RoverIf::send_heartbeat(Protocol::Heartbeat& msg)
         .ticks = HAL::ticks,
         .state = (uint8_t)supervisor.state(),
     };
-    link.send(sizeof(msg));
 }
 
-void RoverIf::send_pwmin(Protocol::Inputs& msg)
+void RoverIf::fill_pwmin(Protocol::Inputs& msg)
 {
     msg.code = Protocol::Code::Inputs;
 
     for (uint8_t i = 0; i < sizeof(msg.channels); i++) {
         msg.channels[i] = pwmin.get(i);
     }
-    link.send(sizeof(msg));
 }
 
-void RoverIf::send_pong(Protocol::Pong& msg)
+void RoverIf::fill_pong(Protocol::Pong& msg)
 {
     msg = {
         .code = Protocol::Code::Pong,
     };
-    link.send(sizeof(msg));
 }
 
 void Supervisor::changed()
@@ -89,6 +86,7 @@ void RoverIf::handle_ping(const Protocol::Ping& msg)
 #define DISPATCH_PENDING(_code, _type, _handler) \
     case Pending::_code:                         \
     _handler (*(Protocol::_type*)pmsg); \
+    link.send(sizeof(Protocol::_type)); \
     break
 
 void RoverIf::poll()
@@ -116,9 +114,9 @@ void RoverIf::poll()
         if (pmsg != nullptr) {
             Pending next = (Pending)pending.pop();
             switch (next) {
-                DISPATCH_PENDING(PWMIn, Inputs, send_pwmin);
-                DISPATCH_PENDING(Heartbeat, Heartbeat, send_heartbeat);
-                DISPATCH_PENDING(Pong, Pong, send_pong);
+                DISPATCH_PENDING(PWMIn, Inputs, fill_pwmin);
+                DISPATCH_PENDING(Heartbeat, Heartbeat, fill_heartbeat);
+                DISPATCH_PENDING(Pong, Pong, fill_pong);
             }
         }
     }

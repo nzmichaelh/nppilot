@@ -49,9 +49,9 @@ private:
 
     static void defer(Pending event) { pending.set((int)event); }
 
-    static void send_heartbeat(Protocol::Heartbeat& msg);
-    static void send_pwmin(Protocol::Inputs& msg);
-    static void send_pong(Protocol::Pong& msg);
+    static void fill_heartbeat(Protocol::Heartbeat& msg);
+    static void fill_pwmin(Protocol::Inputs& msg);
+    static void fill_pong(Protocol::Pong& msg);
 
     static void handle_ping(const Protocol::Ping& msg);
 
