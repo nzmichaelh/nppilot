@@ -10,6 +10,7 @@
 #include "pwmin.h"
 #include "blinker.h"
 #include "servos.h"
+#include "minbitarray.h"
 
 void systick();
 void irq_timer4ch1();
@@ -38,8 +39,20 @@ public:
     static Supervisor supervisor;
 
 private:
-    static void send_heartbeat();
-    static void send_pwmin();
+    enum class Pending : int8_t {
+        PWMIn,
+        Heartbeat,
+        Pong,
+    };
+
+    static MinBitArray pending;
+
+    static void defer(Pending event) { pending.set((int)event); }
+
+    static void send_heartbeat(Protocol::Heartbeat& msg);
+    static void send_pwmin(Protocol::Inputs& msg);
+    static void send_pong(Protocol::Pong& msg);
+
     static void handle_ping(const Protocol::Ping& msg);
 
     static uint8_t ticks_;
