@@ -5,8 +5,28 @@
 #include <avr/interrupt.h>
 
 Link::Link()
-    : tx_at_(1), tx_end_(0)
+    : tx_at_(1), tx_end_(0),
+      rx_at_(0), rx_xor_(0)
 {
+}
+
+uint8_t Link::checksum(const uint8_t* p, uint8_t length)
+{
+    uint16_t sum1 = 0x12;
+    uint16_t sum2 = 0x34;
+
+    for (; length != 0; length--, p++) {
+        sum1 += *p;
+        if (sum1 >= 255) {
+            sum1 -= 255;
+        }
+        sum2 += sum1;
+        if (sum2 >= 255) {
+            sum2 -= 255;
+        }
+    }
+
+    return (uint8_t)(sum1 ^ sum2);
 }
 
 inline void Link::putch(uint8_t ch)
@@ -28,25 +48,34 @@ void Link::send(uint8_t length)
     assert(length > 0);
     assert(tx_at_ > tx_end_);
 
-    uint8_t* p;
-    uint16_t sum1 = 0x12;
-    uint16_t sum2 = 0x34;
-    for (p = tx_; p < tx_ + length; p++) {
-        sum1 += *p;
-        if (sum1 >= 255) {
-            sum1 -= 255;
-        }
-        sum2 += sum1;
-        if (sum2 >= 255) {
-            sum2 -= 255;
-        }
-    }
-    *p = (uint8_t)(sum1 ^ sum2);
+    tx_[length] = checksum(tx_, length);
 
     tx_end_ = length + 1;
     tx_at_ = 1;
 
     putch(tx_[0]);
+}
+
+const void* Link::peek(uint8_t& length)
+{
+    if (!rx_full_) {
+        return nullptr;
+    } else if (rx_at_ < 2) {
+        // Need at least the code and checksum.
+        discard();
+        return nullptr;
+    } else {
+        uint8_t len = rx_at_ - 1;
+        uint8_t sum = checksum(rx_, len);
+
+        if (sum != rx_[len]) {
+            discard();
+            return nullptr;
+        } else {
+            length = len;
+            return rx_;
+        }
+    }
 }
 
 inline void Link::tx_next()
@@ -67,6 +96,31 @@ inline void Link::tx_next()
             tx_at_++;
         }
     }
+}
+
+inline void Link::rx_next()
+{
+    uint8_t ch = UDR0;
+
+    if (!rx_full_) {
+        if (ch == Mark) {
+            rx_full_ = true;
+        } else if (ch == Escape) {
+            rx_xor_ = Xor;
+        } else {
+            if (rx_at_ == sizeof(rx_)) {
+                // Overflow
+            } else {
+                rx_[rx_at_++] = ch ^ rx_xor_;
+                rx_xor_ = 0;
+            }
+        }
+    }
+}
+
+ISR(USART_RX_vect)
+{
+    RoverIf::link.rx_next();
 }
 
 ISR(USART_TX_vect)

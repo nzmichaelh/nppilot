@@ -39,5 +39,7 @@ public:
     static Supervisor supervisor;
 
 private:
+    static void handle_ping(const Protocol::Ping& msg);
+
     static uint8_t ticks_;
 };

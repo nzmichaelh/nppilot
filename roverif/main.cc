@@ -28,7 +28,7 @@ void RoverIf::heartbeat()
 
     if (pmsg != nullptr) {
         *pmsg = {
-            .code = 'h',
+            .code = Protocol::Code::Heartbeat,
             .version = 1,
             .device_id = 2,
             .ticks = HAL::ticks,
@@ -63,8 +63,42 @@ void RoverIf::tick()
     RoverIf::supervisor.tick();
 }
 
+void RoverIf::handle_ping(const Protocol::Ping& msg)
+{
+    Protocol::Pong* pmsg = (Protocol::Pong*)link.start();
+
+    if (pmsg != nullptr) {
+        *pmsg = {
+            .code = Protocol::Code::Pong,
+        };
+        link.send(sizeof(*pmsg));
+    }
+}
+
+#define DISPATCH(_type, _handler) \
+    case Protocol::Code::_type: \
+    if (length == sizeof(Protocol::_type)) \
+        _handler(*(const Protocol::_type*)p); \
+    break
+
 void RoverIf::poll()
 {
+    uint8_t length;
+    const void* p = link.peek(length);
+    
+    if (p != nullptr) {
+        switch (*(const Protocol::Code*)p) {
+            DISPATCH(Ping, handle_ping);
+        default:
+            break;
+        }
+        link.discard();
+    }
+
+    if (ticks_ != HAL::ticks) {
+        ticks_++;
+        tick();
+    }
 }
 
 void RoverIf::init()
@@ -80,12 +114,8 @@ void RoverIf::run()
 
     for (;;) {
         HAL::poll();
+        poll();
         HAL::wait();
-
-        if (ticks_ != HAL::ticks) {
-            ticks_++;
-            tick();
-        }
     }
 }
 

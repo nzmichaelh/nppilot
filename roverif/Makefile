@@ -15,8 +15,8 @@ CXX = $(CROSS_COMPILE)g++
 AR = $(CROSS_COMPILE)ar
 CFLAGS = -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -Wall
 CFLAGS += -I../lib -I../external/avr-stl-stubs/include
-CFLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
-CFLAGS += -save-temps
+CFLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections -pipe
+#CFLAGS += -save-temps
 CXXFLAGS = $(CFLAGS) -std=gnu++11
 AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE)
 
