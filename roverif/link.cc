@@ -90,7 +90,7 @@ inline void Link::tx_next()
 
         if (next == Mark || next == Escape) {
             putch(Escape);
-            tx_[tx_at_] = next ^ Escape;
+            tx_[tx_at_] = next ^ Xor;
         } else {
             putch(next);
             tx_at_++;

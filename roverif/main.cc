@@ -17,13 +17,6 @@ Timer heartbeat_timer;
 
 void RoverIf::heartbeat()
 {
-    static uint8_t pp = 50;
-    Servos::set(0, pp);
-    Servos::set(1, pp+20);
-
-    pp++;
-    if (pp == 200) { pp = 0; }
-
     Protocol::Heartbeat* pmsg = (Protocol::Heartbeat*)link.start();
 
     if (pmsg != nullptr) {

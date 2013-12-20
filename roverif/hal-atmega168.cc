@@ -14,7 +14,7 @@ void HAL::init()
     UCSR0A = 0
         ;
     UCSR0B = 0
-//        | _BV(RXCIE0)
+        | _BV(RXCIE0)
         | _BV(TXCIE0)
 //        | _BV(UDRIE0)
         | _BV(RXEN0)

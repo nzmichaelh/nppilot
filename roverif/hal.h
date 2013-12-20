@@ -12,8 +12,8 @@ public:
 
     static volatile uint8_t ticks;
 
-    static const int RedPin = 6;
-    static const int GreenPin = 7;
+    static const int RedPin = 7;
+    static const int GreenPin = 5;
 
     static const uint32_t BaudRate = 38400;
 };
