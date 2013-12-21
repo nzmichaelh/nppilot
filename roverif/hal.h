@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cstdint>
 
 class HAL
@@ -8,7 +10,9 @@ public:
     static void poll();
     static void wait();
 
-    static const uint16_t TicksPerSecond = F_CPU/256/256;
+    static const int Prescaler = 64;
+    static const uint16_t TicksPerSecond = F_CPU/256/Prescaler;
+    static const uint16_t PerMillisecond = F_CPU/Prescaler/1000;
 
     static volatile uint8_t ticks;
 

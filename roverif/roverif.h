@@ -30,7 +30,6 @@ public:
 
     static void poll();
     static void tick();
-    static void heartbeat();
 
     static PWMIn pwmin;
     static Link link;
@@ -39,6 +38,8 @@ public:
     static Supervisor supervisor;
 
 private:
+    static void send_heartbeat();
+    static void send_pwmin();
     static void handle_ping(const Protocol::Ping& msg);
 
     static uint8_t ticks_;

@@ -1,49 +1,82 @@
-#include <string.h>
-
 #include "pwmin.h"
+#include "roverif.h"
+
+#include <avr/io.h>
+#include <avr/interrupt.h>
+
+// All are on PORTB
 
 PWMIn::PWMIn()
-    : recent_(0)
 {
-    memset(value_, 0, sizeof(value_));
-    memset(last_, 0, sizeof(last_));
+    for (int i = 0; i < NumChannels; i++) {
+        inputs_[i].pin = _BV(i);
+        inputs_[i].good = 0;
+    }
 }
 
-void PWMIn::irq(int channel, uint32_t ccr, volatile uint32_t* pccer, int mask)
+void PWMIn::init()
 {
-    uint32_t ccer = *pccer;
-    *pccer = ccer ^ mask;
+    PCMSK0 = 0;
 
-    if ((ccer & mask) == 0) {
-        /*
-         * Use zero as the special 'never seen' value.  Slight chance
-         * this happens in practice but rare and rapidly overwritten.
-         */
-        if (last_[channel] != 0) {
-            value_[channel] = ccr - last_[channel];
-            recent_ |= 1 << channel;
-        }
+    for (const Input& input : inputs_) {
+        PCMSK0 |= input.pin;
     }
 
-    last_[channel] = ccr;
+    PCICR = _BV(PCIE0);
 }
 
 void PWMIn::expire()
 {
-    int recent = recent_;
-    /*
-     * Mild race here.  The IRQ could write back the old value and
-     * imply that other channels have been seen.  That'll be fixed up
-     * next round.  XOR might work better.
-     */
-    recent_ = 0;
-
-    for (int i = 0; i < Count; i++) {
-        if ((recent & (1 << i)) == 0) {
-            value_[i] = Missing;
-            last_[i] = 0;
-            /* PENDING: doesn't handle the initial glitch in last_ */
+    for (Input& input : inputs_) {
+        switch (input.good) {
+        case 0:
+            break;
+        case 1:
+            input.width = 0;
+            input.good = 0;
+            break;
+        default:
+            input.good--;
+            break;
         }
     }
 }
 
+int8_t PWMIn::get(uint8_t channel) const
+{
+    const Input& input = inputs_[channel];
+
+    if (input.good >= Saturate/2) {
+        return input.width;
+    } else {
+        return 0;
+    }
+}
+
+inline void PWMIn::pcint()
+{
+    uint8_t now = TCNT0;
+    uint8_t level = PINB;
+    uint8_t changed = level_ ^ level;
+    level_ = level;
+
+    for (Input& input : inputs_) {
+        if ((changed & input.pin) != 0) {
+            if ((level & input.pin) != 0) {
+                // Rising edge.
+                input.rose_at = now;
+            } else {
+                // Falling edge.
+                input.width = now - input.rose_at - HAL::PerMillisecond*Center/100;
+                if (input.good < Saturate) {
+                    input.good++;
+                }
+            }
+        }
+    }
+}
+
+ISR(PCINT0_vect)
+{
+    RoverIf::pwmin.pcint();
+}

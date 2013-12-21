@@ -4,8 +4,9 @@ namespace Protocol {
 
 enum class Code : uint8_t {
     Heartbeat = 'h',
-        Ping = 'p',
-        Pong = 'P',
+    Ping = 'p',
+    Pong = 'P',
+    Inputs = 'i',        
 };
 
 struct Generic {
@@ -28,13 +29,10 @@ struct Pong {
 };
 
 struct Inputs {
-    static const uint16_t Missing = 0;
-    static const uint16_t Minimum = 10000;
-    static const uint16_t Mid = 15000;
-    static const uint16_t Maximum = 20000;
+    static const uint8_t Missing = 0;
 
     Code code;
-    uint8_t channel[6];
+    uint8_t channels[6];
 };
 
 struct Servo {
@@ -44,7 +42,7 @@ struct Servo {
     static const uint16_t Maximum = 20000;
 
     Code code;
-    uint8_t channel[6];
+    int8_t channel[6];
     bool armed;
 };
 

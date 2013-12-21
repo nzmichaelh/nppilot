@@ -14,8 +14,9 @@ uint8_t RoverIf::ticks_;
 
 Timer blinker_timer;
 Timer heartbeat_timer;
+Timer pwmin_timer;
 
-void RoverIf::heartbeat()
+void RoverIf::send_heartbeat()
 {
     Protocol::Heartbeat* pmsg = (Protocol::Heartbeat*)link.start();
 
@@ -27,6 +28,20 @@ void RoverIf::heartbeat()
             .ticks = HAL::ticks,
             .state = (uint8_t)supervisor.state(),
         };
+        link.send(sizeof(*pmsg));
+    }
+}
+
+void RoverIf::send_pwmin()
+{
+    Protocol::Inputs* pmsg = (Protocol::Inputs*)link.start();
+
+    if (pmsg != nullptr) {
+        pmsg->code = Protocol::Code::Inputs;
+
+        for (uint8_t i = 0; i < sizeof(pmsg->channels); i++) {
+            pmsg->channels[i] = pwmin.get(i);
+        }
         link.send(sizeof(*pmsg));
     }
 }
@@ -47,11 +62,14 @@ void Supervisor::changed()
 
 void RoverIf::tick()
 {
+    if (pwmin_timer.tick(HAL::TicksPerSecond / 10)) {
+        send_pwmin();
+    }
     if (blinker_timer.tick(HAL::TicksPerSecond / 7)) {
         RoverIf::blinker.tick();
     }
-    if (heartbeat_timer.tick(HAL::TicksPerSecond / 10)) {
-        heartbeat();
+    if (heartbeat_timer.tick(HAL::TicksPerSecond)) {
+        send_heartbeat();
     }
     RoverIf::supervisor.tick();
 }
@@ -98,6 +116,7 @@ void RoverIf::init()
 {
     HAL::init();
     Servos::init();
+    pwmin.init();
 }
 
 void RoverIf::run()

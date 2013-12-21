@@ -1,25 +1,32 @@
-
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
 
 class PWMIn
 {
 public:
-    static const uint16_t Missing = 0;
-
     PWMIn();
 
-    int count() const { return Count; }
-    uint16_t value(int channel) const { return value_[channel]; }
-
-    void irq(int channel, uint32_t ccr, volatile uint32_t* ccer, int mask);
+    void init();
     void expire();
 
-private:
-    static const int Count = 6;
+    int8_t get(uint8_t channel) const;
 
-    uint16_t value_[Count];
-    uint16_t last_[Count];
-    uint8_t recent_;
+    void pcint();
+
+private:
+    struct Input
+    {
+        volatile int8_t width;
+        uint8_t rose_at;
+        uint8_t good;
+        uint8_t pin;
+    };
+
+    static const int NumChannels = 6;
+    static const int Saturate = 10;
+    static const int Center = 158;
+
+    uint8_t level_;
+    Input inputs_[NumChannels];
 };

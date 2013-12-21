@@ -1,4 +1,7 @@
+#pragma once
+
 #include <cstdint>
+#include "hal.h"
 
 class Servos
 {
@@ -13,7 +16,6 @@ public:
 
 private:
     static const int NumChannels = 2;
-    static const int Prescaler = 256;
 
     static uint8_t at_;
     static volatile uint8_t position_[NumChannels];

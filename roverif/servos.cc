@@ -13,7 +13,7 @@ const uint8_t Servos::pins_[] = {
 void Servos::init()
 {
     for (uint8_t pin : pins_) {
-        DDRB |= pin;
+        DDRC |= pin;
     }
 
     TCCR0A = 0
@@ -22,10 +22,10 @@ void Servos::init()
         | (0 << WGM00)
         ;
 
-    static_assert(Prescaler == 256, "Prescaler disagrees.");
+    static_assert(HAL::Prescaler == 64, "Prescaler disagrees.");
     TCCR0B = 0
         | (0 << WGM02)
-        | (4 << CS00)
+        | (3 << CS00)
         ;
 
     TIMSK0 = _BV(OCIE0A) | _BV(OCIE0B) | _BV(TOIE0);
@@ -52,12 +52,12 @@ inline void Servos::overflow()
 
 inline void Servos::compare_a()
 {
-    PINB = pins_[at_];
+    PINC = pins_[at_];
 }
 
 inline void Servos::compare_b()
 {
-    PINB = pins_[at_];
+    PINC = pins_[at_];
 }
 
 ISR(TIMER0_OVF_vect)
