@@ -7,13 +7,17 @@ uint8_t Servos::at_;
 volatile uint8_t Servos::position_[NumChannels];
 
 const uint8_t Servos::pins_[] = {
-    _BV(1), _BV(2)
+    _BV(0), _BV(1), _BV(2), _BV(3), _BV(4),
 };
 
 void Servos::init()
 {
     for (uint8_t pin : pins_) {
         DDRC |= pin;
+    }
+
+    for (volatile uint8_t& position : position_) {
+        position = Mid;
     }
 
     TCCR0A = 0
@@ -39,15 +43,16 @@ void Servos::set(uint8_t channel, uint8_t position)
 inline void Servos::overflow()
 {
     uint8_t at = at_ + 1;
-
     if (at == NumChannels) {
         at = 0;
     }
-    at_ = at;
+
     uint8_t position = position_[at];
     uint8_t offset = 128 - position/2;
     OCR0A = offset;
     OCR0B = offset + position;
+
+    at_ = at;
 }
 
 inline void Servos::compare_a()
