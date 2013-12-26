@@ -14,7 +14,12 @@ def checksum(values):
 
     return (sum1 ^ sum2) & 0xFF
 
-        
+def to_signed(x):
+    if x >= 128:
+        return x - 256
+    else:
+        return x
+
 def main():
     port = serial.Serial('/dev/ttyUSB0', 38400, timeout=0.1)
 
@@ -35,7 +40,8 @@ def main():
                 if len(rx) >= 2:
                     body = rx[:-1]
                     if checksum(body) == rx[-1]:
-                        print('<<', chr(body[0]), repr(body))
+                        formatted = ['%3s' % to_signed(x) for x in body]
+                        print('<<', chr(body[0]), ' '.join(formatted))
                     else:
                         print('Checksum failure.')
                         assert False
@@ -50,7 +56,7 @@ def main():
         now = time.time()
         elapsed = now - start
 
-        if elapsed >= 0.05:
+        if elapsed >= 0.05 and False:
             start = now
             tx = [ord('p')]
             tx.append(checksum(tx))
