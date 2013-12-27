@@ -10,9 +10,8 @@
 /**
  * Array of bits.  Atomic where possible.
  */
-class BitArray
-{
-public:
+class BitArray {
+ public:
     BitArray() : _bits(0) {}
 
     /** Sets or clears an individual bit. */
@@ -27,15 +26,14 @@ public:
     /** Get the index of the last set bit or -1 if none. */
     int last_set() const;
 
-private:
+ private:
     void check(int index) const { assert(index >= 0 && index < count()); }
     uint32_t* get_base() const;
 
     uint32_t _bits;
 };
 
-inline bool BitArray::item(int index) const
-{
+inline bool BitArray::item(int index) const {
     check(index);
     return (_bits & (1 << index)) != 0;
 }

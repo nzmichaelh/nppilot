@@ -1,7 +1,6 @@
 #include "timer.h"
 
-bool Timer::tick(uint8_t reload)
-{
+bool Timer::tick(uint8_t reload) {
     if (_remain >= Reserved) {
         /* Nothing to do */
         return false;

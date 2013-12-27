@@ -6,16 +6,14 @@
 
 // All are on PORTB
 
-PWMIn::PWMIn()
-{
+PWMIn::PWMIn() {
     for (int i = 0; i < NumChannels; i++) {
         inputs_[i].pin = _BV(i);
         inputs_[i].good = 0;
     }
 }
 
-void PWMIn::init()
-{
+void PWMIn::init() {
     PCMSK0 = 0;
 
     for (const Input& input : inputs_) {
@@ -25,8 +23,7 @@ void PWMIn::init()
     PCICR = _BV(PCIE0);
 }
 
-void PWMIn::expire()
-{
+void PWMIn::expire() {
     for (Input& input : inputs_) {
         switch (input.good) {
         case 0:
@@ -42,8 +39,7 @@ void PWMIn::expire()
     }
 }
 
-int8_t PWMIn::get(uint8_t channel) const
-{
+int8_t PWMIn::get(uint8_t channel) const {
     const Input& input = inputs_[channel];
 
     if (input.good >= Saturate/2) {
@@ -53,8 +49,7 @@ int8_t PWMIn::get(uint8_t channel) const
     }
 }
 
-inline void PWMIn::pcint()
-{
+inline void PWMIn::pcint() {
     uint8_t now = TCNT0;
     uint8_t level = PINB;
     uint8_t changed = level_ ^ level;
@@ -67,7 +62,10 @@ inline void PWMIn::pcint()
                 input.rose_at = now;
             } else {
                 // Falling edge.
-                input.width = now - input.rose_at - HAL::PerMillisecond*Center/100;
+                input.width = now
+                    - input.rose_at
+                    - HAL::PerMillisecond*Center/100;
+
                 if (input.good < Saturate) {
                     input.good++;
                 }
@@ -76,7 +74,6 @@ inline void PWMIn::pcint()
     }
 }
 
-ISR(PCINT0_vect)
-{
+ISR(PCINT0_vect) {
     RoverIf::pwmin.pcint();
 }

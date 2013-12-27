@@ -2,9 +2,8 @@
 
 #include <cstdint>
 
-class HAL
-{
-public:
+class HAL {
+ public:
     static void init();
     static void start();
     static void poll();

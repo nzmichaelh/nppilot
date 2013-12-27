@@ -10,9 +10,8 @@
 /**
  * Array of bits used for scheduling work.
  */
-class MinBitArray
-{
-public:
+class MinBitArray {
+ public:
     MinBitArray() : bits_(0) {}
 
     /** Sets an individual bit. */
@@ -22,11 +21,10 @@ public:
     /** Finds the lowest set bit, clears it, and returns the index. */
     int8_t pop();
 
-private:
+ private:
     int count() const { return sizeof(bits_)*8; }
 
-    void check(int index)
-    {
+    void check(int index) {
         assert(index >= 0 && index < count());
     }
 

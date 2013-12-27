@@ -6,7 +6,7 @@ enum class Code : uint8_t {
     Heartbeat = 'h',
     Ping = 'p',
     Pong = 'P',
-    Inputs = 'i',        
+    Inputs = 'i',
 };
 
 struct Generic {
@@ -46,4 +46,4 @@ struct Servo {
     bool armed;
 };
 
-}
+}  // namespace Protocol

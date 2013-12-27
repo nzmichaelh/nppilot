@@ -18,9 +18,8 @@ Timer blinker_timer;
 Timer heartbeat_timer;
 Timer pwmin_timer;
 
-void RoverIf::fill_heartbeat(Protocol::Heartbeat& msg)
-{
-    msg = {
+void RoverIf::fill_heartbeat(Protocol::Heartbeat* pmsg) {
+    *pmsg = {
         .code = Protocol::Code::Heartbeat,
         .version = 1,
         .device_id = 2,
@@ -29,24 +28,27 @@ void RoverIf::fill_heartbeat(Protocol::Heartbeat& msg)
     };
 }
 
-void RoverIf::fill_pwmin(Protocol::Inputs& msg)
-{
-    msg.code = Protocol::Code::Inputs;
+void RoverIf::fill_pwmin(Protocol::Inputs* pmsg) {
+    pmsg->code = Protocol::Code::Inputs;
 
-    for (uint8_t i = 0; i < sizeof(msg.channels); i++) {
-        msg.channels[i] = pwmin.get(i);
+    for (uint8_t i = 0; i < sizeof(pmsg->channels); i++) {
+        pmsg->channels[i] = pwmin.get(i);
     }
+
+    static uint8_t offset = Servos::Low;
+
+    servos.set(0, offset);
+    if (++offset > Servos::High)
+        offset = Servos::Low;
 }
 
-void RoverIf::fill_pong(Protocol::Pong& msg)
-{
-    msg = {
+void RoverIf::fill_pong(Protocol::Pong* pmsg) {
+    *pmsg = {
         .code = Protocol::Code::Pong,
     };
 }
 
-void Supervisor::changed()
-{
+void Supervisor::changed() {
     static const uint8_t patterns[][2] = {
         [State::None] =        { 0b10000001, 0 },
         [State::Remote] =      { 0, 0b10000001 },
@@ -55,12 +57,11 @@ void Supervisor::changed()
         [State::Shutdown] =    { 0b1011, 0 },
     };
 
-    int idx = (int)state();
+    int idx = static_cast<int>(state());
     RoverIf::blinker.set(patterns[idx][0], patterns[idx][1]);
 }
 
-void RoverIf::tick()
-{
+void RoverIf::tick() {
     if (pwmin_timer.tick(HAL::TicksPerSecond / 10)) {
         defer(Pending::PWMIn);
     }
@@ -73,8 +74,7 @@ void RoverIf::tick()
     RoverIf::supervisor.tick();
 }
 
-void RoverIf::handle_ping(const Protocol::Ping& msg)
-{
+void RoverIf::handle_ping(const Protocol::Ping& msg) {
     defer(Pending::Pong);
 }
 
@@ -86,15 +86,14 @@ void RoverIf::handle_ping(const Protocol::Ping& msg)
 
 #define DISPATCH_PENDING(_code, _type, _handler) \
     case Pending::_code:                         \
-    _handler (*(Protocol::_type*)pmsg); \
+    _handler((Protocol::_type*)pmsg); \
     link.send(sizeof(Protocol::_type)); \
     break
 
-void RoverIf::poll()
-{
+void RoverIf::poll() {
     uint8_t length;
     const void* p = link.peek(length);
-    
+
     if (p != nullptr) {
         switch (*(const Protocol::Code*)p) {
             DISPATCH(Ping, handle_ping);
@@ -123,15 +122,13 @@ void RoverIf::poll()
     }
 }
 
-void RoverIf::init()
-{
+void RoverIf::init() {
     HAL::init();
     servos.init();
     pwmin.init();
 }
 
-void RoverIf::run()
-{
+void RoverIf::run() {
     HAL::start();
     blinker.set(0, 0b101);
 
@@ -142,8 +139,7 @@ void RoverIf::run()
     }
 }
 
-void run()
-{
+void run() {
     RoverIf::init();
     RoverIf::run();
 }

@@ -3,19 +3,16 @@
 
 #include <algorithm>
 
-const Switch::Fixed Supervisor::mode_fixed_ =
-{
+const Switch::Fixed Supervisor::mode_fixed_ = {
     { 0, 6310, 9160, 12000 }
 };
 
 
 Supervisor::Supervisor()
-    : state_(State::None), remote_ok_(false), pilot_ok_(false)
-{
+    : state_(State::None), remote_ok_(false), pilot_ok_(false) {
 }
 
-void Supervisor::set_remote(const uint16_t* channels, int count)
-{
+void Supervisor::set_remote(const uint16_t* channels, int count) {
     if (std::abs(channels[ThrottleChannel] - LostThrottle) > 10) {
         remote_seen_.start(500);
         remote_ok_ = true;
@@ -27,12 +24,11 @@ void Supervisor::set_remote(const uint16_t* channels, int count)
     check();
 }
 
-void Supervisor::set_pilot(bool in_control, const uint16_t* channels, int count)
-{
+void Supervisor::set_pilot(
+    bool in_control, const uint16_t* channels, int count) {
 }
 
-void Supervisor::tick()
-{
+void Supervisor::tick() {
     remote_seen_.tick();
     pilot_seen_.tick();
 
@@ -47,8 +43,7 @@ void Supervisor::tick()
     }
 }
 
-void Supervisor::check()
-{
+void Supervisor::check() {
     if (remote_ok_ && pilot_ok_ && pilot_allowed_ && pilot_wants_) {
         change(State::Pilot);
     } else if (remote_ok_ && pilot_allowed_) {
@@ -60,8 +55,7 @@ void Supervisor::check()
     }
 }
 
-void Supervisor::change(State next)
-{
+void Supervisor::change(State next) {
     if (state_ != next) {
         state_ = next;
         changed();
@@ -73,10 +67,8 @@ void Supervisor::change(State next)
     }
 }
 
-void Supervisor::shutdown()
-{
+void Supervisor::shutdown() {
 }
 
-void Supervisor::update(const uint16_t* channels, int count)
-{
+void Supervisor::update(const uint16_t* channels, int count) {
 }

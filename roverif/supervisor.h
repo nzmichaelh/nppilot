@@ -8,9 +8,8 @@
 #include <timer.h>
 #include <switch.h>
 
-class Supervisor
-{
-public:
+class Supervisor {
+ public:
     enum class State {
         None,
         Remote,
@@ -28,7 +27,7 @@ public:
 
     void tick();
 
-private:
+ private:
     static const int LostThrottle = 8296;
     static const int ThrottleChannel = 2;
     static const int ModeChannel = 2;

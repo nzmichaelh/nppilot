@@ -1,11 +1,11 @@
 #include "hal.h"
+
 #include <blinker.h>
 #include <avr/io.h>
 
 volatile uint8_t HAL::ticks;
 
-void HAL::init()
-{
+void HAL::init() {
     DDRD |= 0
         | _BV(RedPin)
         | _BV(GreenPin)
@@ -32,20 +32,16 @@ void HAL::init()
     UBRR0L = (uint8_t)(brr >> 0);
 }
 
-void HAL::start()
-{
+void HAL::start() {
 }
 
-void HAL::poll()
-{
+void HAL::poll() {
 }
 
-void HAL::wait()
-{
+void HAL::wait() {
 }
 
-void Blinker::update(bool red_on, bool green_on)
-{
+void Blinker::update(bool red_on, bool green_on) {
     if (red_on) {
         PORTD |= _BV(HAL::RedPin);
     } else {
