@@ -26,15 +26,17 @@ RESET_PIN = /sys/class/gpio/gpio9/value
 all:	$(APP).hex
 
 reset:
-	(echo 1 | sudo tee $(RESET_PIN)) && \
-	(echo 0 | sudo tee $(RESET_PIN)) && \
-	(echo 1 | sudo tee $(RESET_PIN))
+	bash -c "echo -e '1\n0\n1'" > $(RESET_PIN)
 
 flash:	all reset
 	$(AVRDUDE) -U flash:w:$(APP).hex:i
 
 usb-flash: $(APP).hex
 	sudo $(HOME)/bin/micronucleus --run $<
+
+remote-flash: $(APP).hex
+	scp $< blue:~/projects/nppilot/roverif
+	ssh blue "cd ~/projects/nppilot/roverif && make flash"
 
 fuse:
 	$(AVRDUDE) $(FUSES)
