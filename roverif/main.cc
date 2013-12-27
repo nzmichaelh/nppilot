@@ -6,6 +6,7 @@
 #include "hal.h"
 
 PWMIn RoverIf::pwmin;
+Servos RoverIf::servos;
 Switcher RoverIf::switcher;
 Link RoverIf::link;
 Blinker RoverIf::blinker;
@@ -125,7 +126,7 @@ void RoverIf::poll()
 void RoverIf::init()
 {
     HAL::init();
-    Servos::init();
+    servos.init();
     pwmin.init();
 }
 

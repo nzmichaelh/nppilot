@@ -1,23 +1,24 @@
 #include "servos.h"
 #include "hal.h"
+#include "roverif.h"
 #include <avr/io.h>
 #include <avr/interrupt.h>
-
-uint8_t Servos::at_;
-volatile uint8_t Servos::position_[NumChannels];
 
 const uint8_t Servos::pins_[] = {
     _BV(0), _BV(1), _BV(2), _BV(3), _BV(4),
 };
 
+Servos::Servos()
+{
+    for (volatile uint8_t& position : position_) {
+        position = Mid;
+    }
+}
+
 void Servos::init()
 {
     for (uint8_t pin : pins_) {
         DDRC |= pin;
-    }
-
-    for (volatile uint8_t& position : position_) {
-        position = Mid;
     }
 
     TCCR0A = 0
@@ -67,16 +68,16 @@ inline void Servos::compare_b()
 
 ISR(TIMER0_OVF_vect)
 {
-    Servos::overflow();
+    RoverIf::servos.overflow();
     HAL::ticks++;
 }
 
 ISR(TIMER0_COMPA_vect)
 {
-    Servos::compare_a();
+    RoverIf::servos.compare_a();
 }
 
 ISR(TIMER0_COMPB_vect)
 {
-    Servos::compare_b();
+    RoverIf::servos.compare_b();
 }

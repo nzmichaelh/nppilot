@@ -32,6 +32,7 @@ public:
     static void poll();
     static void tick();
 
+    static Servos servos;
     static PWMIn pwmin;
     static Link link;
     static Switcher switcher;
