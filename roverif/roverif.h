@@ -1,6 +1,4 @@
-#include <switcher.h>
 #include <timer.h>
-#include <usblink.h>
 #include <switch.h>
 #include "supervisor.h"
 #include "link.h"
@@ -34,7 +32,6 @@ class RoverIf {
     static Servos servos;
     static PWMIn pwmin;
     static Link link;
-    static Switcher switcher;
     static Blinker blinker;
     static Supervisor supervisor;
 
@@ -47,7 +44,7 @@ class RoverIf {
 
     static MinBitArray pending;
 
-    static void defer(Pending event) { pending.set(static_cast<int>(event); }
+    static void defer(Pending event) { pending.set(static_cast<int>(event)); }
 
     static void fill_heartbeat(Protocol::Heartbeat* pmsg);
     static void fill_pwmin(Protocol::Inputs* pmsg);

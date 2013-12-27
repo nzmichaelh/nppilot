@@ -7,7 +7,6 @@
 
 PWMIn RoverIf::pwmin;
 Servos RoverIf::servos;
-Switcher RoverIf::switcher;
 Link RoverIf::link;
 Blinker RoverIf::blinker;
 Supervisor RoverIf::supervisor;
@@ -92,7 +91,7 @@ void RoverIf::handle_ping(const Protocol::Ping& msg) {
 
 void RoverIf::poll() {
     uint8_t length;
-    const void* p = link.peek(length);
+    const void* p = link.peek(&length);
 
     if (p != nullptr) {
         switch (*(const Protocol::Code*)p) {
