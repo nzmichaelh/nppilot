@@ -4,6 +4,7 @@
 
 #include "roverif.h"
 #include "hal.h"
+#include "version.h"
 
 PWMIn RoverIf::pwmin;
 Servos RoverIf::servos;
@@ -47,6 +48,19 @@ void RoverIf::fill_pong(Protocol::Pong* pmsg) {
     };
 }
 
+void RoverIf::fill_version(Protocol::Version* pmsg) {
+    pmsg->code = Protocol::Code::Version;
+
+    uint8_t at;
+    for (at = 0; at < sizeof(pmsg->version) && version[at]; at++) {
+        pmsg->version[at] = version[at];
+    }
+
+    for (; at < sizeof(pmsg->version); at++) {
+        pmsg->version[at] = '\0';
+    }
+}
+
 void Supervisor::changed() {
     static const uint8_t patterns[][2] = {
         [State::None] =        { 0b101,      0 },
@@ -62,20 +76,28 @@ void Supervisor::changed() {
 }
 
 void RoverIf::tick() {
-    if (pwmin_timer.tick(HAL::TicksPerSecond / 10)) {
+    if (pwmin_timer.tick(Timer::round(HAL::TicksPerSecond, 10))) {
         defer(Pending::PWMIn);
     }
-    if (blinker_timer.tick(HAL::TicksPerSecond / 7)) {
+    if (blinker_timer.tick(Timer::round(HAL::TicksPerSecond, 7))) {
         RoverIf::blinker.tick();
     }
-    if (heartbeat_timer.tick(HAL::TicksPerSecond / 2)) {
+    if (heartbeat_timer.tick(Timer::round(HAL::TicksPerSecond, 2))) {
         defer(Pending::Heartbeat);
     }
     RoverIf::supervisor.tick();
 }
 
-void RoverIf::handle_ping(const Protocol::Ping& msg) {
-    defer(Pending::Pong);
+#define MAP_REQUEST(_name) \
+    case Protocol::Code::_name: defer(Pending::_name)
+
+void RoverIf::handle_request(const Protocol::Request& msg) {
+    switch (msg.requested) {
+        MAP_REQUEST(Pong);
+        MAP_REQUEST(Version);
+    default:
+        break;
+    }
 }
 
 #define DISPATCH(_type, _handler) \
@@ -96,7 +118,7 @@ void RoverIf::poll() {
 
     if (p != nullptr) {
         switch (*(const Protocol::Code*)p) {
-            DISPATCH(Ping, handle_ping);
+            DISPATCH(Request, handle_request);
         default:
             break;
         }
@@ -117,6 +139,7 @@ void RoverIf::poll() {
                 DISPATCH_PENDING(PWMIn, Inputs, fill_pwmin);
                 DISPATCH_PENDING(Heartbeat, Heartbeat, fill_heartbeat);
                 DISPATCH_PENDING(Pong, Pong, fill_pong);
+                DISPATCH_PENDING(Version, Version, fill_version);
             }
         }
     }

@@ -40,6 +40,7 @@ class RoverIf {
         PWMIn,
         Heartbeat,
         Pong,
+        Version,
     };
 
     static MinBitArray pending;
@@ -49,8 +50,9 @@ class RoverIf {
     static void fill_heartbeat(Protocol::Heartbeat* pmsg);
     static void fill_pwmin(Protocol::Inputs* pmsg);
     static void fill_pong(Protocol::Pong* pmsg);
+    static void fill_version(Protocol::Version* pmsg);
 
-    static void handle_ping(const Protocol::Ping& msg);
+    static void handle_request(const Protocol::Request& msg);
 
     static uint8_t ticks_;
 };

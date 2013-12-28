@@ -4,9 +4,10 @@ namespace Protocol {
 
 enum class Code : uint8_t {
     Heartbeat = 'h',
-    Ping = 'p',
-    Pong = 'P',
+    Pong = 'p',
     Inputs = 'i',
+    Request = 'R',
+    Version = 'v',
 };
 
 struct Generic {
@@ -18,10 +19,6 @@ struct Heartbeat {
     uint8_t device_id;
     uint8_t ticks;
     uint8_t state;
-};
-
-struct Ping {
-    Code code;
 };
 
 struct Pong {
@@ -44,6 +41,16 @@ struct Servo {
     Code code;
     int8_t channel[6];
     bool armed;
+};
+
+struct Request {
+    Code code;
+    Code requested;
+};
+
+struct Version {
+    Code code;
+    char version[18];
 };
 
 }  // namespace Protocol

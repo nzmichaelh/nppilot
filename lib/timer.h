@@ -28,6 +28,10 @@ class Timer {
      */
     void start(int remain) { _remain = remain; }
 
+    static int round(int rate, int divisor) {
+        return (rate + divisor/2) / divisor;
+    }
+
     /** Returns true if the timer is currently running. */
     bool running() const { return _remain < Reserved; }
 
