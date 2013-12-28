@@ -4,12 +4,10 @@
 #include <cstdio>
 
 Switch::Switch()
-    : position_(-1)
-{
+    : position_(-1) {
 }
 
-int Switch::update(const Fixed& fixed, uint16_t level)
-{
+int Switch::update(const Fixed& fixed, uint16_t level) {
     int lowest = UINT16_MAX;
     int next = -1;
 

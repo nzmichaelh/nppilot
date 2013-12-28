@@ -9,11 +9,9 @@
 /**
  * Analogue multi-position switch with hysteresis.
  */
-class Switch
-{
-public:
-    struct Fixed
-    {
+class Switch {
+ public:
+    struct Fixed {
         /**
          * The mid point for each position.  Returns the closest.
          * Add fake out of range values at zero and N-1 for out of
@@ -30,7 +28,7 @@ public:
     /** Returns the current switch position. */
     int position() const { return position_; }
 
-private:
+ private:
     static const int Hysteresis = 200;
 
     int8_t position_;

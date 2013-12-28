@@ -41,6 +41,9 @@ remote-flash: $(APP).hex
 fuse:
 	$(AVRDUDE) $(FUSES)
 
+style:
+	cpplint --filter=-legal/copyright,-whitespace/semicolon,-build/include,-build/header_guard *.cc *.h ../lib/*.cc ../lib/*.h
+
 %.elf: start.o $(LIB)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 	$(CROSS_COMPILE)size -d $@

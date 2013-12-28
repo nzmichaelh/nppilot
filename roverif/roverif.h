@@ -1,6 +1,4 @@
-#include <switcher.h>
 #include <timer.h>
-#include <usblink.h>
 #include <switch.h>
 #include "supervisor.h"
 #include "link.h"
@@ -23,9 +21,8 @@ void irq_timer2ch2();
 void init();
 int main();
 
-class RoverIf
-{
-public:
+class RoverIf {
+ public:
     static void init();
     static void run();
 
@@ -35,11 +32,10 @@ public:
     static Servos servos;
     static PWMIn pwmin;
     static Link link;
-    static Switcher switcher;
     static Blinker blinker;
     static Supervisor supervisor;
 
-private:
+ private:
     enum class Pending : int8_t {
         PWMIn,
         Heartbeat,
@@ -48,11 +44,11 @@ private:
 
     static MinBitArray pending;
 
-    static void defer(Pending event) { pending.set((int)event); }
+    static void defer(Pending event) { pending.set(static_cast<int>(event)); }
 
-    static void fill_heartbeat(Protocol::Heartbeat& msg);
-    static void fill_pwmin(Protocol::Inputs& msg);
-    static void fill_pong(Protocol::Pong& msg);
+    static void fill_heartbeat(Protocol::Heartbeat* pmsg);
+    static void fill_pwmin(Protocol::Inputs* pmsg);
+    static void fill_pong(Protocol::Pong* pmsg);
 
     static void handle_ping(const Protocol::Ping& msg);
 

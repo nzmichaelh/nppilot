@@ -4,19 +4,36 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
+/* The timer runs pretty fast to get good enough resolution.  The
+   prescaler has limited steps, meaning that a 2.0 ms pulse gets very
+   close to overflowing an eight bit counter and would need the first
+   compare to fire very shortly after the start of the cycle.  Instead
+   split the pulse into two overflows and run two at once to get a
+   fast enough update rate.
+
+   So:
+    * Run two channels at once.
+    * Use OCR0A for channel 0.
+    * Use OCR0B for channel 1.
+    * On overflow, schedule the rising edge.
+    * On mid overflow, schedule the falling edge.
+*/
+
 const uint8_t Servos::pins_[] = {
-    _BV(0), _BV(1), _BV(2), _BV(3), _BV(4),
+    _BV(0), _BV(1), _BV(2), _BV(3), _BV(4), _BV(5),
 };
 
 Servos::Servos()
-{
+    : at_(0), state_(State::Start) {
+
+    static_assert(NumChannels % 2 == 0, "Need an even number of channels.");
+
     for (volatile uint8_t& position : position_) {
         position = Mid;
     }
 }
 
-void Servos::init()
-{
+void Servos::init() {
     for (uint8_t pin : pins_) {
         DDRC |= pin;
     }
@@ -36,48 +53,52 @@ void Servos::init()
     TIMSK0 = _BV(OCIE0A) | _BV(OCIE0B) | _BV(TOIE0);
 }
 
-void Servos::set(uint8_t channel, uint8_t position)
-{
+void Servos::set(uint8_t channel, uint8_t position) {
     position_[channel] = position;
 }
 
-inline void Servos::overflow()
-{
-    uint8_t at = at_ + 1;
-    if (at == NumChannels) {
-        at = 0;
+inline void Servos::overflow() {
+    uint8_t at = at_;
+
+    if (state_ == State::Start) {
+        at += 2;
+
+        if (at >= NumChannels) {
+            at = 0;
+            /* Be conservitative and reset the port each cycle. */
+            PORTC = 0;
+        }
+
+        OCR0A = 254 - position_[at+0]/2;
+        OCR0B = 254 - Offset - position_[at+1]/2;
+
+        at_ = at;
+        state_ = State::Centre;
+    } else {
+        OCR0A = position_[at+0]/2;
+        OCR0B = position_[at+1]/2 - Offset;
+
+        state_ = State::Start;
     }
-
-    uint8_t position = position_[at];
-    uint8_t offset = 128 - position/2;
-    OCR0A = offset;
-    OCR0B = offset + position;
-
-    at_ = at;
 }
 
-inline void Servos::compare_a()
-{
-    PINC = pins_[at_];
+inline void Servos::compare_a() {
+    PINC = pins_[at_+0];
 }
 
-inline void Servos::compare_b()
-{
-    PINC = pins_[at_];
+inline void Servos::compare_b() {
+    PINC = pins_[at_+1];
 }
 
-ISR(TIMER0_OVF_vect)
-{
+ISR(TIMER0_OVF_vect) {
     RoverIf::servos.overflow();
     HAL::ticks++;
 }
 
-ISR(TIMER0_COMPA_vect)
-{
+ISR(TIMER0_COMPA_vect) {
     RoverIf::servos.compare_a();
 }
 
-ISR(TIMER0_COMPB_vect)
-{
+ISR(TIMER0_COMPB_vect) {
     RoverIf::servos.compare_b();
 }

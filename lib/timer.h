@@ -15,9 +15,8 @@
  *
  * Timers can trigger a thread.  Use -1 to create a detached timer.
  */
-class Timer
-{
-public:
+class Timer {
+ public:
     /** Special value for a stopped timer. */
     static const uint8_t Stopped = 0xFF;
 
@@ -35,7 +34,7 @@ public:
     /** Tick this timer, reloading and returning true if expired. */
     bool tick(uint8_t reload = Stopped);
 
-private:
+ private:
     static const uint8_t Reserved = 0xFE;
     uint8_t _remain;
 };

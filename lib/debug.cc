@@ -2,8 +2,7 @@
 #include <cassert>
 #include <cstdarg>
 
-void Debug::info(const char* pmsg, ...)
-{
+void Debug::info(const char* pmsg, ...) {
     print("info: ");
 
     va_list args;
@@ -12,8 +11,7 @@ void Debug::info(const char* pmsg, ...)
     print("\r\n");
 }
 
-void Debug::error(const char* pmsg, ...)
-{
+void Debug::error(const char* pmsg, ...) {
     print("error: ");
 
     va_list args;
@@ -22,8 +20,7 @@ void Debug::error(const char* pmsg, ...)
     print("\r\n");
 }
 
-void Debug::print(const char* pmsg)
-{
+void Debug::print(const char* pmsg) {
     const char* pstop = pmsg + 100;
 
     for (; *pmsg != 0 && pmsg < pstop; pmsg++) {
@@ -31,8 +28,7 @@ void Debug::print(const char* pmsg)
     }
 }
 
-void Debug::vprint(const char* pmsg, va_list args)
-{
+void Debug::vprint(const char* pmsg, va_list args) {
     const char* pstop = pmsg + 100;
 
     for (; *pmsg != 0 && pmsg < pstop; pmsg++) {
@@ -67,8 +63,7 @@ void Debug::vprint(const char* pmsg, va_list args)
     }
 }
 
-void Debug::printn(int value, unsigned int base, bool is_signed)
-{
+void Debug::printn(int value, unsigned int base, bool is_signed) {
     static const char digits[] = "0123456789abcdef";
 
     if (is_signed && value < 0) {

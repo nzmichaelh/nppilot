@@ -8,11 +8,11 @@
 #include <timer.h>
 #include <switch.h>
 
-class Supervisor
-{
-public:
-    enum class State {
+class Supervisor {
+ public:
+    enum class State : uint8_t {
         None,
+        Initial,
         Remote,
         RemoteArmed,
         Pilot,
@@ -21,6 +21,8 @@ public:
 
     Supervisor();
 
+    void init();
+
     void set_remote(const uint16_t* channels, int count);
     void set_pilot(bool in_control, const uint16_t* channels, int count);
 
@@ -28,7 +30,7 @@ public:
 
     void tick();
 
-private:
+ private:
     static const int LostThrottle = 8296;
     static const int ThrottleChannel = 2;
     static const int ModeChannel = 2;

@@ -2,22 +2,21 @@
 
 #include <cstdint>
 
-class Link
-{
-public:
+class Link {
+ public:
     Link();
 
     /** Send a frame */
     void* start();
     void send(uint8_t length);
 
-    const void* peek(uint8_t& length);
+    const void* peek(uint8_t* plength);
     void discard() { rx_at_ = 0; rx_full_ = false; }
 
     void tx_next();
     void rx_next();
 
-private:
+ private:
     static const uint8_t Mark = '\n';
     static const uint8_t Escape = '^';
     static const uint8_t Xor = 0x20;

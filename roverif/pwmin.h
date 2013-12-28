@@ -2,9 +2,8 @@
 
 #include <cstdint>
 
-class PWMIn
-{
-public:
+class PWMIn {
+ public:
     PWMIn();
 
     static const int8_t Invalid = -128;
@@ -16,9 +15,8 @@ public:
 
     void pcint();
 
-private:
-    struct Input
-    {
+ private:
+    struct Input {
         volatile int8_t width;
         uint8_t rose_at;
         uint8_t good;

@@ -1,17 +1,17 @@
 #include "link.h"
 #include "roverif.h"
-#include <cassert>
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
+#include <cassert>
+
 Link::Link()
     : tx_at_(1), tx_end_(0),
-      rx_at_(0), rx_xor_(0)
-{
+      rx_at_(0), rx_xor_(0) {
 }
 
-uint8_t Link::checksum(const uint8_t* p, uint8_t length)
-{
+uint8_t Link::checksum(const uint8_t* p, uint8_t length) {
     uint16_t sum1 = 0x12;
     uint16_t sum2 = 0x34;
 
@@ -29,13 +29,11 @@ uint8_t Link::checksum(const uint8_t* p, uint8_t length)
     return (uint8_t)(sum1 ^ sum2);
 }
 
-inline void Link::putch(uint8_t ch)
-{
+inline void Link::putch(uint8_t ch) {
     UDR0 = ch;
 }
 
-void* Link::start()
-{
+void* Link::start() {
     if (tx_at_ > tx_end_) {
         return tx_;
     } else {
@@ -43,8 +41,7 @@ void* Link::start()
     }
 }
 
-void Link::send(uint8_t length)
-{
+void Link::send(uint8_t length) {
     assert(length > 0);
     assert(tx_at_ > tx_end_);
 
@@ -56,8 +53,7 @@ void Link::send(uint8_t length)
     putch(tx_[0]);
 }
 
-const void* Link::peek(uint8_t& length)
-{
+const void* Link::peek(uint8_t* plength) {
     if (!rx_full_) {
         return nullptr;
     } else if (rx_at_ < 2) {
@@ -72,14 +68,13 @@ const void* Link::peek(uint8_t& length)
             discard();
             return nullptr;
         } else {
-            length = len;
+            *plength = len;
             return rx_;
         }
     }
 }
 
-inline void Link::tx_next()
-{
+inline void Link::tx_next() {
     if (tx_at_ > tx_end_) {
         // Nothing to do.
     } else if (tx_at_ == tx_end_) {
@@ -98,8 +93,7 @@ inline void Link::tx_next()
     }
 }
 
-inline void Link::rx_next()
-{
+inline void Link::rx_next() {
     uint8_t ch = UDR0;
 
     if (!rx_full_) {
@@ -118,12 +112,10 @@ inline void Link::rx_next()
     }
 }
 
-ISR(USART_RX_vect)
-{
+ISR(USART_RX_vect) {
     RoverIf::link.rx_next();
 }
 
-ISR(USART_TX_vect)
-{
+ISR(USART_TX_vect) {
     RoverIf::link.tx_next();
 }
