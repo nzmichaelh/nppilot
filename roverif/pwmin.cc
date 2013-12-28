@@ -8,14 +8,16 @@
 
 PWMIn::PWMIn()
 {
-    for (int i = 0; i < NumChannels; i++) {
-        inputs_[i].pin = _BV(i);
-        inputs_[i].good = 0;
+    for (Input& input : inputs_) {
+        input.good = 0;
     }
 }
 
 void PWMIn::init()
 {
+    DDRB = 0;
+    PORTB = 0xFF;
+
     PCMSK0 = 0;
 
     for (const Input& input : inputs_) {
@@ -49,7 +51,7 @@ int8_t PWMIn::get(uint8_t channel) const
     if (input.good >= Saturate/2) {
         return input.width;
     } else {
-        return 0;
+        return Invalid;
     }
 }
 
