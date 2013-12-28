@@ -44,6 +44,12 @@ fuse:
 style:
 	cpplint --filter=-legal/copyright,-whitespace/semicolon,-build/include,-build/header_guard *.cc *.h ../lib/*.cc ../lib/*.h
 
+version.h: version.h.tmp
+	cmp -s $@ $< || mv -f $< $@
+
+version.h.tmp:
+	echo static const char* const version = \"$(shell git describe --tags --dirty=x --always)\"\; > $@
+
 %.elf: start.o $(LIB)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 	$(CROSS_COMPILE)size -d $@
