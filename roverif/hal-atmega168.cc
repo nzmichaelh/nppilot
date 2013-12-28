@@ -12,6 +12,7 @@ void HAL::init()
         ;
 
     UCSR0A = 0
+        | _BV(U2X0) // Halve the divisor.
         ;
     UCSR0B = 0
         | _BV(RXCIE0)
@@ -27,7 +28,7 @@ void HAL::init()
         | (3 << UCSZ00)
         ;
 
-    const uint32_t brr = (F_CPU / 16 / BaudRate) - 1;
+    const uint32_t brr = (F_CPU / 8 / BaudRate) - 1;
     UBRR0H = (uint8_t)(brr >> 8);
     UBRR0L = (uint8_t)(brr >> 0);
 }
