@@ -44,6 +44,8 @@ fuse:
 style:
 	cpplint --filter=-legal/copyright,-whitespace/semicolon,-build/include,-build/header_guard *.cc *.h ../lib/*.cc ../lib/*.h
 
+main.cc: version.h
+
 version.h: version.h.tmp
 	cmp -s $@ $< || mv -f $< $@
 
@@ -61,4 +63,4 @@ $(LIB): $(OBJ)
 	avr-objcopy -j .text -j .data -O ihex $< $@
 
 clean:
-	rm -f $(APP).hex $(APP).elf $(OBJ) *~
+	rm -f $(APP).hex $(APP).elf version.h $(OBJ) *~
