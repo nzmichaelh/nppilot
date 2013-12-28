@@ -21,14 +21,17 @@ class Link {
     static const uint8_t Escape = '^';
     static const uint8_t Xor = 0x20;
 
+    static const int RxBufferSize = 8;
+    static const int TxBufferSize = 22;
+
     void putch(uint8_t ch);
     uint8_t checksum(const uint8_t* p, uint8_t length);
 
-    uint8_t tx_[8];
+    uint8_t tx_[TxBufferSize];
     uint8_t tx_at_;
     uint8_t tx_end_;
 
-    uint8_t rx_[8];
+    uint8_t rx_[RxBufferSize];
     uint8_t rx_at_;
     uint8_t rx_xor_;
     bool rx_full_;
