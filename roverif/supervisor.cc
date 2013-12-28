@@ -12,6 +12,10 @@ Supervisor::Supervisor()
     : state_(State::None), remote_ok_(false), pilot_ok_(false) {
 }
 
+void Supervisor::init() {
+    change(State::Initial);
+}
+
 void Supervisor::set_remote(const uint16_t* channels, int count) {
     if (std::abs(channels[ThrottleChannel] - LostThrottle) > 10) {
         remote_seen_.start(500);
@@ -51,7 +55,9 @@ void Supervisor::check() {
     } else if (remote_ok_) {
         change(State::Remote);
     } else {
-        change(State::Shutdown);
+        if (state_ != State::Initial) {
+            change(State::Shutdown);
+        }
     }
 }
 

@@ -49,11 +49,12 @@ void RoverIf::fill_pong(Protocol::Pong* pmsg) {
 
 void Supervisor::changed() {
     static const uint8_t patterns[][2] = {
-        [State::None] =        { 0b10000001, 0 },
-        [State::Remote] =      { 0, 0b10000001 },
-        [State::RemoteArmed] = { 0, 0b10000101 },
-        [State::Pilot] =       { 0, 0b11111110 },
-        [State::Shutdown] =    { 0b1011, 0 },
+        [State::None] =        { 0b101,      0 },
+        [State::Initial] =     { 0b10000001, 0 },
+        [State::Remote] =      { 0,          0b10000001 },
+        [State::RemoteArmed] = { 0,          0b10000101 },
+        [State::Pilot] =       { 0,          0b11111110 },
+        [State::Shutdown] =    { 0b1011,     0 },
     };
 
     int idx = static_cast<int>(state());
@@ -125,11 +126,11 @@ void RoverIf::init() {
     HAL::init();
     servos.init();
     pwmin.init();
+    supervisor.init();
 }
 
 void RoverIf::run() {
     HAL::start();
-    blinker.set(0, 0b101);
 
     for (;;) {
         HAL::poll();

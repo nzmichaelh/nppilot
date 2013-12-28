@@ -10,8 +10,9 @@
 
 class Supervisor {
  public:
-    enum class State {
+    enum class State : uint8_t {
         None,
+        Initial,
         Remote,
         RemoteArmed,
         Pilot,
@@ -19,6 +20,8 @@ class Supervisor {
     };
 
     Supervisor();
+
+    void init();
 
     void set_remote(const uint16_t* channels, int count);
     void set_pilot(bool in_control, const uint16_t* channels, int count);
