@@ -12,7 +12,7 @@ void HAL::init() {
         ;
 
     UCSR0A = 0
-        | _BV(U2X0) // Halve the divisor.
+        | _BV(U2X0)  // Halve the divisor.
         ;
     UCSR0B = 0
         | _BV(RXCIE0)
