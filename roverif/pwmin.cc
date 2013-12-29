@@ -47,7 +47,7 @@ int8_t PWMIn::get(uint8_t channel) const {
     if (input.good >= Saturate/2) {
         return input.width;
     } else {
-        return Invalid;
+        return Missing;
     }
 }
 

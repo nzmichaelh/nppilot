@@ -6,7 +6,7 @@ class PWMIn {
  public:
     PWMIn();
 
-    static const int8_t Invalid = -128;
+    static const int8_t Missing = -128;
 
     void init();
     void expire();
