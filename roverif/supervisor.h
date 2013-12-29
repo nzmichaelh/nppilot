@@ -10,47 +10,43 @@
 
 class Supervisor {
  public:
-    enum class State : uint8_t {
-        None,
+    enum class InControl {
+        Invalid,
         Initial,
+        None,
         Remote,
-        RemoteArmed,
         Pilot,
-        Shutdown,
     };
 
     Supervisor();
 
     void init();
 
-    void set_remote(const uint16_t* channels, int count);
-    void set_pilot(bool in_control, const uint16_t* channels, int count);
+    void update_remote(bool throttle_high, bool pilot_allowed);
+    void update_pilot(bool want_control);
 
-    State state() const { return state_; }
+    bool pilot_allowed() const { return pilot_allowed_; }
+    bool in_shutdown() const { return in_shutdown_; }
+    bool remote_ok() const { return remote_ok_; }
+    InControl in_control() const { return in_control_; }
 
     void tick();
 
  private:
-    static const int LostThrottle = 8296;
-    static const int ThrottleChannel = 2;
-    static const int ModeChannel = 2;
-
-    void update(const uint16_t* channels, int count);
+    void check();
+    void change(InControl next);
     void shutdown();
     void changed();
 
-    void check();
-    void change(State next);
-
-    State state_;
+    InControl in_control_;
 
     bool remote_ok_;
     bool pilot_ok_;
     bool pilot_allowed_;
     bool pilot_wants_;
-    Switch mode_;
+    bool throttle_high_;
+    bool in_shutdown_;
+
     Timer remote_seen_;
     Timer pilot_seen_;
-
-    static const Switch::Fixed mode_fixed_;
 };

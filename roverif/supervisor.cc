@@ -3,33 +3,47 @@
 
 #include <algorithm>
 
-const Switch::Fixed Supervisor::mode_fixed_ = {
-    { 0, 6310, 9160, 12000 }
-};
+/* Goals:
 
+ * Throttle shutdown on start.
+ * Throttle shutdown when returning to remote.
+ * Clear throttle shutdown by going to idle.
+ * None, Remote, or Pilot is in control.
+ * Can enter pilot mode when enabled by a switch on the remote.
+ * Enter pilot mode immediately without shutdowns.
+
+ */
 
 Supervisor::Supervisor()
-    : state_(State::None), remote_ok_(false), pilot_ok_(false) {
+    : in_control_(InControl::Invalid), in_shutdown_(true) {
 }
 
 void Supervisor::init() {
-    change(State::Initial);
+    change(InControl::Initial);
+    changed();
 }
 
-void Supervisor::set_remote(const uint16_t* channels, int count) {
-    if (std::abs(channels[ThrottleChannel] - LostThrottle) > 10) {
-        remote_seen_.start(500);
-        remote_ok_ = true;
-    }
+void Supervisor::update_remote(bool throttle_high, bool pilot_allowed) {
+    bool old = pilot_allowed_;
 
-    mode_.update(mode_fixed_, channels[4]);
-    pilot_allowed_ = (mode_.position() == 3);
+    throttle_high_ = throttle_high;
+    pilot_allowed_ = pilot_allowed;
 
+    remote_seen_.start(250);
+    remote_ok_ = true;
     check();
+
+    if (old != pilot_allowed_) {
+        changed();
+    }
 }
 
-void Supervisor::set_pilot(
-    bool in_control, const uint16_t* channels, int count) {
+void Supervisor::update_pilot(bool want_control) {
+    pilot_wants_ = want_control;
+
+    pilot_seen_.start(250);
+    pilot_ok_ = true;
+    check();
 }
 
 void Supervisor::tick() {
@@ -48,33 +62,37 @@ void Supervisor::tick() {
 }
 
 void Supervisor::check() {
-    if (remote_ok_ && pilot_ok_ && pilot_allowed_ && pilot_wants_) {
-        change(State::Pilot);
-    } else if (remote_ok_ && pilot_allowed_) {
-        change(State::RemoteArmed);
+    if (remote_ok_ && pilot_ok_) {
+        if (pilot_wants_ && pilot_allowed_ && !in_shutdown_) {
+            change(InControl::Pilot);
+        } else {
+            change(InControl::Remote);
+        }
     } else if (remote_ok_) {
-        change(State::Remote);
+        change(InControl::Remote);
     } else {
-        if (state_ != State::Initial) {
-            change(State::Shutdown);
+        change(InControl::None);
+    }
+
+    if (in_control_ == InControl::Remote) {
+        if (in_shutdown_ && !throttle_high_) {
+            in_shutdown_ = false;
+            changed();
         }
     }
 }
 
-void Supervisor::change(State next) {
-    if (state_ != next) {
-        state_ = next;
+void Supervisor::change(InControl next) {
+    if (in_control_ == InControl::Initial && next == InControl::None) {
+        // Stay in initial.
+    } else if (in_control_ != next) {
+        if (next != InControl::Pilot) {
+            if (!in_shutdown_) {
+                shutdown();
+            }
+            in_shutdown_ = true;
+        }
+        in_control_ = next;
         changed();
-
-        if (state_ == State::Shutdown) {
-            /* PENDING: Use NUM_ELEMS */
-            shutdown();
-        }
     }
-}
-
-void Supervisor::shutdown() {
-}
-
-void Supervisor::update(const uint16_t* channels, int count) {
 }
