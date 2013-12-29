@@ -29,7 +29,7 @@ class RoverIf {
     static const int ThrottleChannel = 2;
     static const int ShutdownChannel = 3;
     static const int SwitchChannel = 4;
-    
+
  private:
     enum class Pending {
         PWMIn,
@@ -40,7 +40,7 @@ class RoverIf {
     };
 
     static void defer(Pending event) { pending_.set(static_cast<int>(event)); }
-    static bool tick_one(Timer& timer, int divisor);
+    static bool tick_one(Timer* ptimer, int divisor);
 
     static void poll_pwmin();
 

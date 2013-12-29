@@ -42,8 +42,9 @@ void RoverIf::fill_pwmin(Protocol::Input* pmsg) {
         offset = Servos::Low;
 }
 
-static inline void set_flag(Protocol::State::Flags* pnow, Protocol::State::Flags next) {
-    *pnow = (Protocol::State::Flags)((int)(*pnow) | (int)next);
+template<typename T>
+static inline void set_flag(T* pnow, T next) {
+    *pnow = (T)(static_cast<int>(*pnow) | static_cast<int>(next));
 }
 
 void RoverIf::fill_state(Protocol::State* pmsg) {
@@ -85,15 +86,13 @@ void RoverIf::fill_version(Protocol::Version* pmsg) {
     }
 }
 
-void RoverIf::poll_pwmin()
-{
+void RoverIf::poll_pwmin() {
     if (pwmin.get(ShutdownChannel) < -30) {
         // Treat as missing.
     } else {
         supervisor.update_remote(
             abs(pwmin.get(ThrottleChannel)) > 10,
-            pwmin.get(SwitchChannel) > -30
-            );
+            pwmin.get(SwitchChannel) > -30);
     }
 }
 
@@ -136,22 +135,22 @@ void Supervisor::shutdown() {
     RoverIf::send_state();
 }
 
-inline bool RoverIf::tick_one(Timer& timer, int divisor) {
-    return timer.tick(Timer::round(HAL::TicksPerSecond, divisor));
+inline bool RoverIf::tick_one(Timer* ptimer, int divisor) {
+    return ptimer->tick(Timer::round(HAL::TicksPerSecond, divisor));
 }
 
 void RoverIf::tick() {
-    if (tick_one(pwmin_timer, 10)) {
+    if (tick_one(&pwmin_timer, 10)) {
         defer(Pending::PWMIn);
         poll_pwmin();
     }
-    if (tick_one(blinker_timer, 7)) {
+    if (tick_one(&blinker_timer, 7)) {
         RoverIf::blinker.tick();
     }
-    if (tick_one(state_timer, 2)) {
+    if (tick_one(&state_timer, 2)) {
         defer(Pending::State);
     }
-    if (tick_one(heartbeat_timer, 2)) {
+    if (tick_one(&heartbeat_timer, 2)) {
         defer(Pending::Heartbeat);
     }
     RoverIf::supervisor.tick();
