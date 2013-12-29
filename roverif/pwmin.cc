@@ -7,8 +7,11 @@
 // All are on PORTB
 
 PWMIn::PWMIn() {
+    uint8_t pin = 1;
     for (Input& input : inputs_) {
         input.good = 0;
+        input.pin = pin;
+        pin <<= 1;
     }
 }
 
