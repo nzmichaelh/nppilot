@@ -21,7 +21,7 @@ class Link {
     static const uint8_t Escape = '^';
     static const uint8_t Xor = 0x20;
 
-    static const int RxBufferSize = 8;
+    static const int RxBufferSize = 12;
     static const int TxBufferSize = 22;
 
     void putch(uint8_t ch);
