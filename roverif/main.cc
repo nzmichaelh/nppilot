@@ -17,6 +17,7 @@ MinBitArray RoverIf::pending;
 Timer blinker_timer;
 Timer heartbeat_timer;
 Timer pwmin_timer;
+Timer state_timer;
 
 void RoverIf::fill_heartbeat(Protocol::Heartbeat* pmsg) {
     *pmsg = {
@@ -24,11 +25,10 @@ void RoverIf::fill_heartbeat(Protocol::Heartbeat* pmsg) {
         .version = 1,
         .device_id = 2,
         .ticks = HAL::ticks,
-        .state = (uint8_t)supervisor.state(),
     };
 }
 
-void RoverIf::fill_pwmin(Protocol::Inputs* pmsg) {
+void RoverIf::fill_pwmin(Protocol::Input* pmsg) {
     pmsg->code = Protocol::Code::Inputs;
 
     for (uint8_t i = 0; i < sizeof(pmsg->channels); i++) {
@@ -40,6 +40,13 @@ void RoverIf::fill_pwmin(Protocol::Inputs* pmsg) {
     servos.set(0, offset);
     if (++offset > Servos::High)
         offset = Servos::Low;
+}
+
+void RoverIf::fill_state(Protocol::State* pmsg) {
+    *pmsg = {
+        .code = Protocol::Code::State,
+        .flags = Protocol::State::Flags::None,
+    };
 }
 
 void RoverIf::fill_pong(Protocol::Pong* pmsg) {
@@ -75,14 +82,21 @@ void Supervisor::changed() {
     RoverIf::blinker.set(patterns[idx][0], patterns[idx][1]);
 }
 
+inline bool RoverIf::tick_one(Timer& timer, int divisor) {
+    return timer.tick(Timer::round(HAL::TicksPerSecond, divisor));
+}
+
 void RoverIf::tick() {
-    if (pwmin_timer.tick(Timer::round(HAL::TicksPerSecond, 10))) {
+    if (tick_one(pwmin_timer, 10)) {
         defer(Pending::PWMIn);
     }
-    if (blinker_timer.tick(Timer::round(HAL::TicksPerSecond, 7))) {
+    if (tick_one(blinker_timer, 7)) {
         RoverIf::blinker.tick();
     }
-    if (heartbeat_timer.tick(Timer::round(HAL::TicksPerSecond, 2))) {
+    if (tick_one(state_timer, 2)) {
+        defer(Pending::State);
+    }
+    if (tick_one(heartbeat_timer, 2)) {
         defer(Pending::Heartbeat);
     }
     RoverIf::supervisor.tick();
@@ -98,6 +112,10 @@ void RoverIf::handle_request(const Protocol::Request& msg) {
     default:
         break;
     }
+}
+
+void RoverIf::handle_demand(const Protocol::Demand& msg) {
+    supervisor.set_pilot(msg.flags == Protocol::Demand::Flags::TakeControl, nullptr, 0);
 }
 
 #define DISPATCH(_type, _handler) \
@@ -119,6 +137,7 @@ void RoverIf::poll() {
     if (p != nullptr) {
         switch (*(const Protocol::Code*)p) {
             DISPATCH(Request, handle_request);
+            DISPATCH(Demand, handle_demand);
         default:
             break;
         }
@@ -136,7 +155,8 @@ void RoverIf::poll() {
         if (pmsg != nullptr) {
             Pending next = (Pending)pending.pop();
             switch (next) {
-                DISPATCH_PENDING(PWMIn, Inputs, fill_pwmin);
+                DISPATCH_PENDING(PWMIn, Input, fill_pwmin);
+                DISPATCH_PENDING(State, State, fill_state);
                 DISPATCH_PENDING(Heartbeat, Heartbeat, fill_heartbeat);
                 DISPATCH_PENDING(Pong, Pong, fill_pong);
                 DISPATCH_PENDING(Version, Version, fill_version);

@@ -10,17 +10,6 @@
 #include "servos.h"
 #include "minbitarray.h"
 
-void systick();
-void irq_timer4ch1();
-void irq_timer3ch2();
-void irq_timer3ch3();
-void irq_timer3ch4();
-void irq_timer2ch1();
-void irq_timer2ch2();
-
-void init();
-int main();
-
 class RoverIf {
  public:
     static void init();
@@ -38,6 +27,7 @@ class RoverIf {
  private:
     enum class Pending : int8_t {
         PWMIn,
+        State,
         Heartbeat,
         Pong,
         Version,
@@ -46,13 +36,16 @@ class RoverIf {
     static MinBitArray pending;
 
     static void defer(Pending event) { pending.set(static_cast<int>(event)); }
+    static bool tick_one(Timer& timer, int divisor);
 
     static void fill_heartbeat(Protocol::Heartbeat* pmsg);
-    static void fill_pwmin(Protocol::Inputs* pmsg);
+    static void fill_pwmin(Protocol::Input* pmsg);
+    static void fill_state(Protocol::State* pmsg);
     static void fill_pong(Protocol::Pong* pmsg);
     static void fill_version(Protocol::Version* pmsg);
 
     static void handle_request(const Protocol::Request& msg);
+    static void handle_demand(const Protocol::Demand& msg);
 
     static uint8_t ticks_;
 };
