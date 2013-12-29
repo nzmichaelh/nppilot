@@ -87,12 +87,12 @@ void RoverIf::fill_version(Protocol::Version* pmsg) {
 }
 
 void RoverIf::poll_pwmin() {
-    if (pwmin.get(ShutdownChannel) < -30) {
+    if (pwmin.get(ShutdownChannel) < -PWMIn::Full*2/3) {
         // Treat as missing.
     } else {
         supervisor.update_remote(
-            abs(pwmin.get(ThrottleChannel)) > 10,
-            pwmin.get(SwitchChannel) > -30);
+            abs(pwmin.get(ThrottleChannel)) > PWMIn::Full/5,
+            pwmin.get(SwitchChannel) > -PWMIn::Full/2);
     }
 }
 
