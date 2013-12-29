@@ -26,7 +26,10 @@ struct Heartbeat {
 struct State {
     enum class Flags : uint8_t {
         None = 0,
-        InControl = 1,
+        RemoteOK = 1,
+        InControl = 2,
+        InShutdown = 4,
+        PilotAllowed = 8,
     };
 
     Code code;

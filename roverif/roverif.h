@@ -18,14 +18,20 @@ class RoverIf {
     static void poll();
     static void tick();
 
+    static void send_state();
+
     static Servos servos;
     static PWMIn pwmin;
     static Link link;
     static Blinker blinker;
     static Supervisor supervisor;
 
+    static const int ThrottleChannel = 2;
+    static const int ShutdownChannel = 3;
+    static const int SwitchChannel = 4;
+    
  private:
-    enum class Pending : int8_t {
+    enum class Pending {
         PWMIn,
         State,
         Heartbeat,
@@ -33,10 +39,10 @@ class RoverIf {
         Version,
     };
 
-    static MinBitArray pending;
-
-    static void defer(Pending event) { pending.set(static_cast<int>(event)); }
+    static void defer(Pending event) { pending_.set(static_cast<int>(event)); }
     static bool tick_one(Timer& timer, int divisor);
+
+    static void poll_pwmin();
 
     static void fill_heartbeat(Protocol::Heartbeat* pmsg);
     static void fill_pwmin(Protocol::Input* pmsg);
@@ -48,4 +54,5 @@ class RoverIf {
     static void handle_demand(const Protocol::Demand& msg);
 
     static uint8_t ticks_;
+    static MinBitArray pending_;
 };

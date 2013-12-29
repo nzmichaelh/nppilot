@@ -12,7 +12,7 @@ Link RoverIf::link;
 Blinker RoverIf::blinker;
 Supervisor RoverIf::supervisor;
 uint8_t RoverIf::ticks_;
-MinBitArray RoverIf::pending;
+MinBitArray RoverIf::pending_;
 
 Timer blinker_timer;
 Timer heartbeat_timer;
@@ -42,11 +42,28 @@ void RoverIf::fill_pwmin(Protocol::Input* pmsg) {
         offset = Servos::Low;
 }
 
+static inline void set_flag(Protocol::State::Flags* pnow, Protocol::State::Flags next) {
+    *pnow = (Protocol::State::Flags)((int)(*pnow) | (int)next);
+}
+
 void RoverIf::fill_state(Protocol::State* pmsg) {
     *pmsg = {
         .code = Protocol::Code::State,
         .flags = Protocol::State::Flags::None,
     };
+
+    if (supervisor.remote_ok()) {
+        set_flag(&pmsg->flags, Protocol::State::Flags::RemoteOK);
+    }
+    if (supervisor.in_shutdown()) {
+        set_flag(&pmsg->flags, Protocol::State::Flags::InShutdown);
+    }
+    if (supervisor.in_control() == Supervisor::InControl::Pilot) {
+        set_flag(&pmsg->flags, Protocol::State::Flags::InControl);
+    }
+    if (supervisor.pilot_allowed()) {
+        set_flag(&pmsg->flags, Protocol::State::Flags::PilotAllowed);
+    }
 }
 
 void RoverIf::fill_pong(Protocol::Pong* pmsg) {
@@ -68,18 +85,55 @@ void RoverIf::fill_version(Protocol::Version* pmsg) {
     }
 }
 
-void Supervisor::changed() {
-    static const uint8_t patterns[][2] = {
-        [State::None] =        { 0b101,      0 },
-        [State::Initial] =     { 0b10000001, 0 },
-        [State::Remote] =      { 0,          0b10000001 },
-        [State::RemoteArmed] = { 0,          0b10000101 },
-        [State::Pilot] =       { 0,          0b11111110 },
-        [State::Shutdown] =    { 0b1011,     0 },
-    };
+void RoverIf::poll_pwmin()
+{
+    if (pwmin.get(ShutdownChannel) < -30) {
+        // Treat as missing.
+    } else {
+        supervisor.update_remote(
+            abs(pwmin.get(ThrottleChannel)) > 10,
+            pwmin.get(SwitchChannel) > -30
+            );
+    }
+}
 
-    int idx = static_cast<int>(state());
-    RoverIf::blinker.set(patterns[idx][0], patterns[idx][1]);
+void RoverIf::send_state() {
+    defer(Pending::State);
+}
+
+void Supervisor::changed() {
+    uint8_t red = 0;
+    uint8_t green = 0;
+
+    switch (in_control()) {
+    case InControl::Initial:
+        red = 0b10000001;
+        break;
+    case InControl::None:
+        red = 0b11111110;
+        break;
+    case InControl::Remote:
+        green = pilot_allowed() ? 0b10001010 : 0b10000010;
+        break;
+    case InControl::Pilot:
+        green = 0b11111110;
+        break;
+    case InControl::Invalid:
+    default:
+        red = 0b101;
+        break;
+    }
+
+    if (in_shutdown() && red == 0) {
+        red = 0b01;
+    }
+    RoverIf::blinker.set(red, green);
+    RoverIf::send_state();
+}
+
+void Supervisor::shutdown() {
+    RoverIf::servos.set(RoverIf::ThrottleChannel, Servos::Mid);
+    RoverIf::send_state();
 }
 
 inline bool RoverIf::tick_one(Timer& timer, int divisor) {
@@ -89,6 +143,7 @@ inline bool RoverIf::tick_one(Timer& timer, int divisor) {
 void RoverIf::tick() {
     if (tick_one(pwmin_timer, 10)) {
         defer(Pending::PWMIn);
+        poll_pwmin();
     }
     if (tick_one(blinker_timer, 7)) {
         RoverIf::blinker.tick();
@@ -115,7 +170,7 @@ void RoverIf::handle_request(const Protocol::Request& msg) {
 }
 
 void RoverIf::handle_demand(const Protocol::Demand& msg) {
-    supervisor.set_pilot(msg.flags == Protocol::Demand::Flags::TakeControl, nullptr, 0);
+    supervisor.update_pilot(msg.flags == Protocol::Demand::Flags::TakeControl);
 }
 
 #define DISPATCH(_type, _handler) \
@@ -149,11 +204,11 @@ void RoverIf::poll() {
         tick();
     }
 
-    if (!pending.is_empty()) {
+    if (!pending_.is_empty()) {
         void* pmsg = link.start();
 
         if (pmsg != nullptr) {
-            Pending next = (Pending)pending.pop();
+            Pending next = (Pending)pending_.pop();
             switch (next) {
                 DISPATCH_PENDING(PWMIn, Input, fill_pwmin);
                 DISPATCH_PENDING(State, State, fill_state);
