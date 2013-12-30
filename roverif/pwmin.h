@@ -14,6 +14,8 @@ class PWMIn {
 
     int8_t get(uint8_t channel) const;
 
+    volatile uint8_t cycles;
+
     void pcint();
 
  private:
@@ -21,7 +23,6 @@ class PWMIn {
         volatile int8_t width;
         uint8_t rose_at;
         uint8_t good;
-        uint8_t pin;
     };
 
     static const int NumChannels = 6;
