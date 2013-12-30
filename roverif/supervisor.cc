@@ -29,7 +29,7 @@ void Supervisor::update_remote(bool throttle_high, bool pilot_allowed) {
     throttle_high_ = throttle_high;
     pilot_allowed_ = pilot_allowed;
 
-    remote_seen_.start(250);
+    remote_seen_.start(500);
     remote_ok_ = true;
     check();
 
@@ -41,7 +41,7 @@ void Supervisor::update_remote(bool throttle_high, bool pilot_allowed) {
 void Supervisor::update_pilot(bool want_control) {
     pilot_wants_ = want_control;
 
-    pilot_seen_.start(250);
+    pilot_seen_.start(500);
     pilot_ok_ = true;
     check();
 }

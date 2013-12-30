@@ -126,20 +126,16 @@ void Supervisor::shutdown() {
     RoverIf::send_state();
 }
 
-inline bool RoverIf::tick_one(Timer* ptimer, int divisor) {
-    return ptimer->tick(Timer::round(HAL::TicksPerSecond, divisor));
-}
-
 void RoverIf::tick() {
     pwmin_limiter.tick();
 
-    if (tick_one(&blinker_timer, 7)) {
+    if (blinker_timer.tick(1000/7)) {
         RoverIf::blinker.tick();
     }
-    if (tick_one(&state_timer, 2)) {
+    if (state_timer.tick(500)) {
         defer(Pending::State);
     }
-    if (tick_one(&heartbeat_timer, 2)) {
+    if (heartbeat_timer.tick(500)) {
         defer(Pending::Heartbeat);
     }
     RoverIf::supervisor.tick();
@@ -206,7 +202,7 @@ void RoverIf::poll_pwmin() {
         }
 
         if (!pwmin_limiter.running()) {
-            pwmin_limiter.start(Timer::round(HAL::TicksPerSecond, 10));
+            pwmin_limiter.start(100);
             defer(Pending::PWMIn);
         }
     }
@@ -243,6 +239,8 @@ void RoverIf::poll() {
 }
 
 void RoverIf::init() {
+    static_assert(HAL::TicksPerSecond >= 100, "Tick rate is too low.");
+
     HAL::init();
     servos.init();
     pwmin.init();
