@@ -52,7 +52,7 @@ version.h: version.h.tmp
 version.h.tmp:
 	echo static const char* const version = \"$(shell git describe --tags --dirty=x --always)\"\; > $@
 
-%.elf: start.o $(LIB)
+%.elf: $(LIB)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 	$(CROSS_COMPILE)size -d $@
 
