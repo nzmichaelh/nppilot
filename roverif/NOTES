@@ -6,3 +6,9 @@ Supervisor
 PWMIn
 Servo
 Link
+
+Bandwidth
+=========
+https://docs.google.com/spreadsheet/ccc?key=0Alf_rWdmv9JidFBhNGc3M1VKR2ExOTBCTXhnN3JXdXc&usp=sharing
+
+38400 baud gives 11 % utilisation at a 50 ms update rate.

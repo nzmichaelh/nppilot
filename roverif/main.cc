@@ -199,11 +199,11 @@ void RoverIf::poll_pwmin() {
             supervisor.update_remote(
                 abs(pwmin.get(ThrottleChannel)) > PWMIn::Full/5,
                 pwmin.get(SwitchChannel) > -PWMIn::Full/2);
-        }
 
-        if (!pwmin_limiter.running()) {
-            pwmin_limiter.start(100);
-            defer(Pending::PWMIn);
+            if (!pwmin_limiter.running()) {
+                pwmin_limiter.start(50);
+                defer(Pending::PWMIn);
+            }
         }
     }
 }
