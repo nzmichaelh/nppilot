@@ -12,11 +12,12 @@ Link RoverIf::link;
 Blinker RoverIf::blinker;
 Supervisor RoverIf::supervisor;
 uint8_t RoverIf::ticks_;
+uint8_t RoverIf::pwmin_cycles_;
 MinBitArray RoverIf::pending_;
 
 Timer blinker_timer;
 Timer heartbeat_timer;
-Timer pwmin_timer;
+Timer pwmin_limiter;
 Timer state_timer;
 
 void RoverIf::fill_heartbeat(Protocol::Heartbeat* pmsg) {
@@ -86,16 +87,6 @@ void RoverIf::fill_version(Protocol::Version* pmsg) {
     }
 }
 
-void RoverIf::poll_pwmin() {
-    if (pwmin.get(ShutdownChannel) < -PWMIn::Full*2/3) {
-        // Treat as missing.
-    } else {
-        supervisor.update_remote(
-            abs(pwmin.get(ThrottleChannel)) > PWMIn::Full/5,
-            pwmin.get(SwitchChannel) > -PWMIn::Full/2);
-    }
-}
-
 void RoverIf::send_state() {
     defer(Pending::State);
 }
@@ -140,10 +131,8 @@ inline bool RoverIf::tick_one(Timer* ptimer, int divisor) {
 }
 
 void RoverIf::tick() {
-    if (tick_one(&pwmin_timer, 10)) {
-        defer(Pending::PWMIn);
-        poll_pwmin();
-    }
+    pwmin_limiter.tick();
+
     if (tick_one(&blinker_timer, 7)) {
         RoverIf::blinker.tick();
     }
@@ -156,13 +145,13 @@ void RoverIf::tick() {
     RoverIf::supervisor.tick();
 }
 
-#define MAP_REQUEST(_name) \
+#define DISPATCH_REQUEST(_name) \
     case Protocol::Code::_name: defer(Pending::_name)
 
 void RoverIf::handle_request(const Protocol::Request& msg) {
     switch (msg.requested) {
-        MAP_REQUEST(Pong);
-        MAP_REQUEST(Version);
+        DISPATCH_REQUEST(Pong);
+        DISPATCH_REQUEST(Version);
     default:
         break;
     }
@@ -172,11 +161,56 @@ void RoverIf::handle_demand(const Protocol::Demand& msg) {
     supervisor.update_pilot(msg.flags == Protocol::Demand::Flags::TakeControl);
 }
 
-#define DISPATCH(_type, _handler) \
+#define DISPATCH_MSG(_type, _handler) \
     case Protocol::Code::_type: \
     if (length == sizeof(Protocol::_type)) \
         _handler(*(const Protocol::_type*)p); \
     break
+
+void RoverIf::poll_link() {
+    uint8_t length;
+    const void* p = link.peek(&length);
+
+    if (p != nullptr) {
+        switch (*(const Protocol::Code*)p) {
+            DISPATCH_MSG(Request, handle_request);
+            DISPATCH_MSG(Demand, handle_demand);
+        default:
+            break;
+        }
+        link.discard();
+    }
+}
+
+void RoverIf::poll_ticks() {
+    if (ticks_ != HAL::ticks) {
+        ticks_++;
+
+        if ((ticks_ & (HAL::TickPrescaler-1)) == 0) {
+            tick();
+        }
+    }
+}
+
+void RoverIf::poll_pwmin() {
+    uint8_t cycles = pwmin.cycles;
+    if (cycles != pwmin_cycles_) {
+        pwmin_cycles_ = cycles;
+
+        if (pwmin.get(ShutdownChannel) < -PWMIn::Full*2/3) {
+            // Treat as missing.
+        } else {
+            supervisor.update_remote(
+                abs(pwmin.get(ThrottleChannel)) > PWMIn::Full/5,
+                pwmin.get(SwitchChannel) > -PWMIn::Full/2);
+        }
+
+        if (!pwmin_limiter.running()) {
+            pwmin_limiter.start(Timer::round(HAL::TicksPerSecond, 10));
+            defer(Pending::PWMIn);
+        }
+    }
+}
 
 #define DISPATCH_PENDING(_code, _type, _handler) \
     case Pending::_code:                         \
@@ -184,25 +218,7 @@ void RoverIf::handle_demand(const Protocol::Demand& msg) {
     link.send(sizeof(Protocol::_type)); \
     break
 
-void RoverIf::poll() {
-    uint8_t length;
-    const void* p = link.peek(&length);
-
-    if (p != nullptr) {
-        switch (*(const Protocol::Code*)p) {
-            DISPATCH(Request, handle_request);
-            DISPATCH(Demand, handle_demand);
-        default:
-            break;
-        }
-        link.discard();
-    }
-
-    if (ticks_ != HAL::ticks) {
-        ticks_++;
-        tick();
-    }
-
+void RoverIf::poll_pending() {
     if (!pending_.is_empty()) {
         void* pmsg = link.start();
 
@@ -217,6 +233,13 @@ void RoverIf::poll() {
             }
         }
     }
+}
+
+void RoverIf::poll() {
+    poll_link();
+    poll_ticks();
+    poll_pwmin();
+    poll_pending();
 }
 
 void RoverIf::init() {

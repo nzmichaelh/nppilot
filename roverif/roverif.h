@@ -43,6 +43,9 @@ class RoverIf {
     static bool tick_one(Timer* ptimer, int divisor);
 
     static void poll_pwmin();
+    static void poll_link();
+    static void poll_ticks();
+    static void poll_pending();
 
     static void fill_heartbeat(Protocol::Heartbeat* pmsg);
     static void fill_pwmin(Protocol::Input* pmsg);
@@ -53,6 +56,8 @@ class RoverIf {
     static void handle_request(const Protocol::Request& msg);
     static void handle_demand(const Protocol::Demand& msg);
 
+
     static uint8_t ticks_;
+    static uint8_t pwmin_cycles_;
     static MinBitArray pending_;
 };
