@@ -25,6 +25,9 @@ class Link {
     static const int TxBufferSize = 22;
 
     void putch(uint8_t ch);
+    void disable_tx();
+    void enable_tx();
+
     uint8_t checksum(const uint8_t* p, uint8_t length);
 
     uint8_t tx_[TxBufferSize];

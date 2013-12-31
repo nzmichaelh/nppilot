@@ -29,6 +29,14 @@ uint8_t Link::checksum(const uint8_t* p, uint8_t length) {
     return (uint8_t)(sum1 ^ sum2);
 }
 
+inline void Link::disable_tx() {
+    UCSR0B &= ~_BV(UDRIE0);
+}
+
+inline void Link::enable_tx() {
+    UCSR0B |= _BV(UDRIE0);
+}
+
 inline void Link::putch(uint8_t ch) {
     UDR0 = ch;
 }
@@ -48,9 +56,9 @@ void Link::send(uint8_t length) {
     tx_[length] = checksum(tx_, length);
 
     tx_end_ = length + 1;
-    tx_at_ = 1;
+    tx_at_ = 0;
 
-    putch(tx_[0]);
+    enable_tx();
 }
 
 const void* Link::peek(uint8_t* plength) {
@@ -80,6 +88,7 @@ inline void Link::tx_next() {
     } else if (tx_at_ == tx_end_) {
         putch(Mark);
         tx_at_++;
+        disable_tx();
     } else {
         uint8_t next = tx_[tx_at_];
 
@@ -116,6 +125,6 @@ ISR(USART_RX_vect) {
     RoverIf::link.rx_next();
 }
 
-ISR(USART_TX_vect) {
+ISR(USART_UDRE_vect) {
     RoverIf::link.tx_next();
 }
