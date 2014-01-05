@@ -18,7 +18,7 @@ class RoverIf {
     static void poll();
     static void tick();
 
-    static void send_state();
+    static void supervisor_changed();
 
     static Servos servos;
     static PWMIn pwmin;
@@ -56,8 +56,10 @@ class RoverIf {
     static void handle_request(const Protocol::Request& msg);
     static void handle_demand(const Protocol::Demand& msg);
 
+    static void update_servos(const int8_t* pdemands, bool from_pilot);
 
     static uint8_t ticks_;
     static uint8_t pwmin_cycles_;
     static MinBitArray pending_;
+    static uint8_t pilot_supplied_;
 };

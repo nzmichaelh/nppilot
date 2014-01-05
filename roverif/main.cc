@@ -14,11 +14,50 @@ Supervisor RoverIf::supervisor;
 uint8_t RoverIf::ticks_;
 uint8_t RoverIf::pwmin_cycles_;
 MinBitArray RoverIf::pending_;
+uint8_t RoverIf::pilot_supplied_;
 
 Timer blinker_timer;
 Timer heartbeat_timer;
 Timer pwmin_limiter;
 Timer state_timer;
+
+void RoverIf::update_servos(const int8_t* pdemands, bool from_pilot) {
+    if (from_pilot) {
+        pilot_supplied_ = 0;
+    }
+
+    Supervisor::InControl in_control = supervisor.in_control();
+
+    for (int i = 0; i < servos.NumChannels; i++) {
+        if (i == ThrottleChannel && supervisor.in_shutdown()) {
+            servos.set(i, Servos::Mid);
+        } else if (from_pilot) {
+            if (pdemands[i] > Protocol::Demand::Reserved) {
+                pilot_supplied_ |= 1 << i;
+
+                if (in_control == Supervisor::InControl::Pilot) {
+                    servos.set(i, Servos::Mid + pdemands[i]);
+                }
+            }
+        } else {
+            if (pdemands[i] > PWMIn::Missing) {
+                switch (in_control) {
+                case Supervisor::InControl::Remote:
+                    servos.set(i, Servos::Mid + pdemands[i]);
+                    break;
+                case Supervisor::InControl::Pilot:
+                    if ((pilot_supplied_ & (1 << i)) == 0) {
+                        servos.set(i, Servos::Mid + pdemands[i]);
+                    }
+                    break;
+                default:
+                    // No control.
+                    break;
+                }
+            }
+        }
+    }
+}
 
 void RoverIf::fill_heartbeat(Protocol::Heartbeat* pmsg) {
     *pmsg = {
@@ -35,12 +74,6 @@ void RoverIf::fill_pwmin(Protocol::Input* pmsg) {
     for (uint8_t i = 0; i < sizeof(pmsg->channels); i++) {
         pmsg->channels[i] = pwmin.get(i);
     }
-
-    static uint8_t offset = Servos::Low;
-
-    servos.set(0, offset);
-    if (++offset > Servos::High)
-        offset = Servos::Low;
 }
 
 template<typename T>
@@ -87,7 +120,8 @@ void RoverIf::fill_version(Protocol::Version* pmsg) {
     }
 }
 
-void RoverIf::send_state() {
+void RoverIf::supervisor_changed() {
+    pilot_supplied_ = 0;
     defer(Pending::State);
 }
 
@@ -118,16 +152,17 @@ void Supervisor::changed() {
         red = 0b01;
     }
     RoverIf::blinker.set(red, green);
-    RoverIf::send_state();
+    RoverIf::supervisor_changed();
 }
 
 void Supervisor::shutdown() {
     RoverIf::servos.set(RoverIf::ThrottleChannel, Servos::Mid);
-    RoverIf::send_state();
+    RoverIf::supervisor_changed();
 }
 
 void RoverIf::tick() {
     pwmin_limiter.tick();
+    RoverIf::supervisor.tick();
 
     if (blinker_timer.tick(1000/7)) {
         RoverIf::blinker.tick();
@@ -138,7 +173,6 @@ void RoverIf::tick() {
     if (heartbeat_timer.tick(500)) {
         defer(Pending::Heartbeat);
     }
-    RoverIf::supervisor.tick();
 }
 
 #define DISPATCH_REQUEST(_name) \
@@ -155,6 +189,7 @@ void RoverIf::handle_request(const Protocol::Request& msg) {
 
 void RoverIf::handle_demand(const Protocol::Demand& msg) {
     supervisor.update_pilot(msg.flags == Protocol::Demand::Flags::TakeControl);
+    update_servos(msg.channels, true);
 }
 
 #define DISPATCH_MSG(_type, _handler) \
@@ -199,6 +234,10 @@ void RoverIf::poll_pwmin() {
             supervisor.update_remote(
                 abs(pwmin.get(ThrottleChannel)) > PWMIn::Full/5,
                 pwmin.get(SwitchChannel) > -PWMIn::Full/2);
+
+            int8_t channels[PWMIn::NumChannels];
+            pwmin.get_all(channels);
+            update_servos(channels, false);
 
             if (!pwmin_limiter.running()) {
                 pwmin_limiter.start(50);

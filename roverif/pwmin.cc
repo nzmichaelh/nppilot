@@ -45,6 +45,12 @@ int8_t PWMIn::get(uint8_t channel) const {
     }
 }
 
+void PWMIn::get_all(int8_t* pinto) const {
+    for (int i = 0; i < NumChannels; i++) {
+        pinto[i] = get(i);
+    }
+}
+
 inline void PWMIn::pcint() {
     uint8_t now = TCNT0;
     uint8_t level = PINB;

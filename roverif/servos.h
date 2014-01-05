@@ -10,6 +10,8 @@
 */
 class Servos {
  public:
+    static const int NumChannels = 6;
+
     Servos();
 
     /** Initialise and start the hardware. */
@@ -35,7 +37,6 @@ class Servos {
         Centre,
     };
 
-    static const int NumChannels = 6;
     /** How much to offset the second channel. */
     static const int Offset = Low/3;
 

@@ -48,6 +48,9 @@ struct Input {
 };
 
 struct Demand {
+    static const int8_t PassThrough = -127;
+    static const int8_t Reserved = -120;
+
     enum class Flags : uint8_t {
         None = 0,
         TakeControl = 1,
