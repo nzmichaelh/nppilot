@@ -22,9 +22,10 @@ class Servos {
     */
     void set(uint8_t channel, uint8_t position);
 
-    static const uint8_t Low = F_CPU/HAL::Prescaler/1000*1;
-    static const uint8_t Mid = F_CPU/HAL::Prescaler/1000*3/2;
-    static const uint8_t High = F_CPU/HAL::Prescaler/1000*2;
+    static const uint8_t Low = 100*F_CPU/HAL::Prescaler/1000/100;
+    static const uint8_t Mid = 150*F_CPU/HAL::Prescaler/1000/100;
+    // TODO(michaelh): hack to handle the 8.3 MHz clock.
+    static const uint8_t High = 196*F_CPU/HAL::Prescaler/1000/100;
 
     /** Interrupt handlers. */
     void overflow();

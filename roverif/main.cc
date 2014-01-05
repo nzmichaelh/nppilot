@@ -296,7 +296,8 @@ void RoverIf::run() {
     }
 }
 
-void run() {
+int main() {
     RoverIf::init();
     RoverIf::run();
+    return 0;
 }
