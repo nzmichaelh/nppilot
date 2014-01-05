@@ -1,6 +1,6 @@
 APP = roverif
 DEVICE     = atmega168
-CLOCK      = 8000000
+CLOCK      = 8300000
 #PROGRAMMER = -c signalyzer-lite
 PROGRAMMER = -c arduino -b 19200 -P $(PROGRAMMER_PORT)
 PROGRAMMER_PORT = /dev/ttyO4
