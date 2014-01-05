@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"log"
+//	"log"
 	"regexp"
 	"strconv"
 	"strings"
-	"fmt"
 )
 
 var matcher *regexp.Regexp
@@ -17,7 +16,7 @@ func init() {
 	matcher = regexp.MustCompile(`\$([A-Z]+,.+)\*(\w\w)$`)
 }
 
-type Message interface {
+type Sentence interface {
 }
 
 type GGA struct {
@@ -50,12 +49,14 @@ type RMC struct {
 }
 
 type Link struct {
-	Sentences        uint
+	Received         uint
 	UnrecognisedType uint
 	ChecksumError    uint
 	ParseError       uint
 	EmptyFields      uint
 	DecodeError      uint
+
+	Sentences chan Sentence
 }
 
 type Parser struct {
@@ -151,9 +152,9 @@ func checksum(frame string) uint8 {
 	return sum
 }
 
-func (link *Link) decode(frame string) (msg Message, err error, emptyField bool) {
+func (link *Link) decode(frame string) (msg Sentence, err error, emptyField bool) {
 	parser := &Parser{strings.Split(frame, ","), false, nil}
-	log.Println(parser)
+//	log.Println(parser)
 
 	switch parser.GetString(0) {
 	case "GPGGA":
@@ -201,7 +202,7 @@ func (link *Link) dispatch(frame *bytes.Buffer) {
 		return
 	}
 
-	link.Sentences += 1
+	link.Received += 1
 	sum := checksum(parts[1])
 	got, err := strconv.ParseUint(parts[2], 16, 8)
 
@@ -217,7 +218,7 @@ func (link *Link) dispatch(frame *bytes.Buffer) {
 	} else if emptyField {
 		link.EmptyFields += 1
 	} else if msg != nil {
-		fmt.Printf("%T %v\n", msg, msg)
+		link.Sentences <- msg
 	}
 }
 
@@ -254,3 +255,8 @@ func (link *Link) Watch(port io.Reader) {
 	link.Read(port)
 }
 
+func New() *Link {
+	link := &Link{}
+	link.Sentences = make(chan Sentence)
+	return link
+}

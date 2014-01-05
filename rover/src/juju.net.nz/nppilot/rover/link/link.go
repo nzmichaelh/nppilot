@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"bytes"
 	"time"
-	"fmt"
 )
 
 const (
@@ -14,6 +13,9 @@ const (
 	Escape = '^'
 	Xor = 0x20
 )
+
+type Frame interface {
+}
 
 type Link struct {
 	Received uint
@@ -24,6 +26,8 @@ type Link struct {
 	ShortFrame uint
 	Unrecognised uint
 	DecodeError uint
+
+	Frames chan Frame
 }
 
 type Heartbeat struct {
@@ -136,7 +140,7 @@ func (link *Link) dispatch(frame []byte) {
 				link.DecodeError += 1
 				log.Println("err: unused input while decoding.")
 			default:
-				log.Println(fmt.Sprintf("%.3f", time.Now().Sub(now).Seconds()), "ok", string(code), msg)
+				link.Frames <- msg
 				link.Received += 1
 			}
 		}
@@ -202,4 +206,10 @@ func (link *Link) Send(port io.ReadWriteCloser, msg interface{}) {
 
 	escaped = append(escaped, Mark)
 	port.Write(escaped)
+}
+
+func New() *Link {
+	link := &Link{}
+	link.Frames = make(chan Frame)
+	return link
 }

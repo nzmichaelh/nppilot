@@ -4,7 +4,8 @@ EXTERNAL = github.com/tarm/goserial
 
 SRC = \
 	$(wildcard src/$(PKG)/*/*.go) \
-	$(wildcard src/$(PKG)/*.go)
+	$(wildcard src/$(PKG)/*.go) \
+	$(wildcard *.go)
 
 GOPATH = $(shell pwd)
 export GOPATH
@@ -12,7 +13,7 @@ export GOPATH
 all: $(APP)
 
 $(APP): $(SRC) $(EXTERNAL:%=src/%)
-	go build src/$(PKG)/$(APP).go
+	go build $(APP).go
 
 run: $(APP)
 	scp $< blue:~

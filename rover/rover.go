@@ -10,6 +10,7 @@ import (
 )
 
 import (
+	"juju.net.nz/nppilot/rover"
 	"juju.net.nz/nppilot/rover/gps"
 	"juju.net.nz/nppilot/rover/link"
 	"github.com/tarm/goserial"
@@ -49,15 +50,20 @@ func openPort(name string, baud int) io.ReadWriter {
 func main() {
 	flag.Parse()
 
-	var gps gps.Link
+	gps := gps.New()
 	go gps.Watch(openPort(*gpsPort, 57600))
 
 	expvar.Publish("gps", expvar.Func(func() interface{} { return gps }))
 
-	var link link.Link
+	link := link.New()
 	go link.Watch(openPort(*linkPort, 38400))
 
 	expvar.Publish("link", expvar.Func(func() interface{} { return link }))
+
+	supervisor := &rover.Supervisor{GPS: gps, Link: link}
+	go supervisor.Run()
+
+	expvar.Publish("state", expvar.Func(func() interface{} { return supervisor.Status }))
 
 	log.Fatal(http.ListenAndServe(*httpServer, nil))
 }
