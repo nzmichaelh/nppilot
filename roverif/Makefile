@@ -26,7 +26,7 @@ RESET_PIN = /sys/class/gpio/gpio9/value
 all:	$(APP).hex
 
 reset:
-	bash -c "echo -e '1\n0\n1'" > $(RESET_PIN)
+	-bash -c "echo -e '1\n0\n1'" > $(RESET_PIN)
 
 flash:	all reset
 	$(AVRDUDE) -U flash:w:$(APP).hex:i
@@ -41,7 +41,7 @@ remote-flash: $(APP).hex
 fuse:
 	$(AVRDUDE) $(FUSES)
 
-style:
+style: all
 	cpplint --filter=-legal/copyright,-whitespace/semicolon,-build/include,-build/header_guard *.cc *.h ../lib/*.cc ../lib/*.h
 
 main.cc: version.h
