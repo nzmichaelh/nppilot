@@ -29,7 +29,7 @@ class PWMIn {
     };
 
     static const int Saturate = 10;
-    static const int Center = 158;
+    static const int Center = 150;
 
     uint8_t level_;
     Input inputs_[NumChannels];

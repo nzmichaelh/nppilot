@@ -2,6 +2,7 @@
 
 #include <blinker.h>
 #include <avr/io.h>
+#include <avr/interrupt.h>
 
 volatile uint8_t HAL::ticks;
 
@@ -33,6 +34,7 @@ void HAL::init() {
 }
 
 void HAL::start() {
+    sei();
 }
 
 void HAL::poll() {

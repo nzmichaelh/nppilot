@@ -21,6 +21,7 @@ struct Heartbeat {
     uint8_t version;
     uint8_t device_id;
     uint8_t ticks;
+    int8_t reference;
 };
 
 struct State {

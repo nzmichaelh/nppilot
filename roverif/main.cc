@@ -65,6 +65,7 @@ void RoverIf::fill_heartbeat(Protocol::Heartbeat* pmsg) {
         .version = 1,
         .device_id = 2,
         .ticks = HAL::ticks,
+        .reference = (F_CPU - 8000000)/(1000000/64),
     };
 }
 
