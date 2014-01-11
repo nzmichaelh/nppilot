@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-//	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -20,13 +19,13 @@ type Sentence interface {
 }
 
 type GGA struct {
-	Time         float64
-	Latitude     float64
-	Longitude    float64
-	Quality      int
-	NumSatelites int
-	HDOP         float64
-	Altitude     float64
+	Time          float64
+	Latitude      float64
+	Longitude     float64
+	Quality       int
+	NumSatellites int
+	HDOP          float64
+	Altitude      float64
 }
 
 type VTG struct {
@@ -60,9 +59,9 @@ type Link struct {
 }
 
 type Parser struct {
-	fields []string
+	fields     []string
 	EmptyField bool
-	Err    error
+	Err        error
 }
 
 func (parser *Parser) setError(text string) {
@@ -154,18 +153,17 @@ func checksum(frame string) uint8 {
 
 func (link *Link) decode(frame string) (msg Sentence, err error, emptyField bool) {
 	parser := &Parser{strings.Split(frame, ","), false, nil}
-//	log.Println(parser)
 
 	switch parser.GetString(0) {
 	case "GPGGA":
 		msg = &GGA{
-			Time:         parser.GetTime(1),
-			Latitude:     parser.GetLatLong(2),
-			Longitude:    parser.GetLatLong(4),
-			Quality:      parser.GetInt(6),
-			NumSatelites: parser.GetInt(7),
-			HDOP:         parser.GetFloat(8),
-			Altitude:     parser.GetFloat(9),
+			Time:          parser.GetTime(1),
+			Latitude:      parser.GetLatLong(2),
+			Longitude:     parser.GetLatLong(4),
+			Quality:       parser.GetInt(6),
+			NumSatellites: parser.GetInt(7),
+			HDOP:          parser.GetFloat(8),
+			Altitude:      parser.GetFloat(9),
 		}
 	case "GPVTG":
 		msg = &VTG{
