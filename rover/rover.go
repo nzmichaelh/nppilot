@@ -60,7 +60,12 @@ func main() {
 
 	expvar.Publish("link", expvar.Func(func() interface{} { return link }))
 
-	supervisor := &rover.Supervisor{GPS: gps, Link: link}
+	pid := rover.PID{Kp: 0, Ki: 0.1, Kd: 0,
+		UMax: 0.5, UMin: 0.5, TiLimit: 0.5}
+	controller := &rover.SpeedController{PID: pid}
+	expvar.Publish("controller", expvar.Func(func() interface{} { return controller }))
+
+	supervisor := &rover.Supervisor{GPS: gps, Link: link, Controller: controller}
 	go supervisor.Run()
 
 	expvar.Publish("state", expvar.Func(func() interface{} { return supervisor.Status }))
