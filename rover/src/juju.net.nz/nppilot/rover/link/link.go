@@ -17,7 +17,7 @@ const (
 type Frame interface {
 }
 
-type Link struct {
+type Stats struct {
 	Received uint
 	Escaped  uint
 
@@ -26,8 +26,14 @@ type Link struct {
 	ShortFrame   uint
 	Unrecognised uint
 	DecodeError  uint
+}
+
+type Link struct {
+	Stats Stats
 
 	Frames chan Frame
+
+	port io.ReadWriter
 }
 
 type Heartbeat struct {
@@ -111,7 +117,7 @@ func make_message(code byte) interface{} {
 func (link *Link) dispatch(frame []byte) {
 	if len(frame) < 2 {
 		// Need at least the code and checksum.
-		link.ShortFrame += 1
+		link.Stats.ShortFrame += 1
 	} else {
 		length := len(frame) - 1
 		sum := checksum(frame[:length])
@@ -121,35 +127,35 @@ func (link *Link) dispatch(frame []byte) {
 		switch {
 		case sum != frame[length]:
 			// Bad checksum.
-			link.CheckErrors += 1
+			link.Stats.CheckErrors += 1
 		case msg == nil:
-			link.Unrecognised += 1
+			link.Stats.Unrecognised += 1
 		default:
 			src := bytes.NewBuffer(frame[:length])
 			err := binary.Read(src, binary.LittleEndian, msg)
 
 			switch {
 			case err != nil:
-				link.DecodeError += 1
+				link.Stats.DecodeError += 1
 			case src.Len() != 0:
-				link.DecodeError += 1
+				link.Stats.DecodeError += 1
 			default:
 				link.Frames <- msg
-				link.Received += 1
+				link.Stats.Received += 1
 			}
 		}
 	}
 }
 
-func (link *Link) Watch(port io.ReadWriter) {
-	got := make([]byte, 1)
+func (link *Link) Watch() {
+	got := make([]byte, 128)
 	frame := make([]byte, 0)
 	rx := make([]byte, 0)
 
 	var xor byte
 
 	for {
-		n, err := port.Read(got)
+		n, err := link.port.Read(got)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -163,13 +169,13 @@ func (link *Link) Watch(port io.ReadWriter) {
 				rx = make([]byte, 0)
 			case Escape:
 				xor = Xor
-				link.Escaped += 1
+				link.Stats.Escaped += 1
 			default:
 				frame = append(frame, ch^xor)
 				xor = 0
 
 				if len(frame) > 100 {
-					link.Overruns += 1
+					link.Stats.Overruns += 1
 					frame = make([]byte, 0)
 				}
 			}
@@ -177,7 +183,7 @@ func (link *Link) Watch(port io.ReadWriter) {
 	}
 }
 
-func (link *Link) Send(port io.ReadWriteCloser, msg interface{}) {
+func (link *Link) Send(msg interface{}) {
 	encoded := new(bytes.Buffer)
 	binary.Write(encoded, binary.LittleEndian, msg)
 	encoded.WriteByte(checksum(encoded.Bytes()))
@@ -195,11 +201,10 @@ func (link *Link) Send(port io.ReadWriteCloser, msg interface{}) {
 	}
 
 	escaped = append(escaped, Mark)
-	port.Write(escaped)
+	link.port.Write(escaped)
 }
 
-func New() *Link {
-	link := &Link{}
-	link.Frames = make(chan Frame)
+func New(port io.ReadWriter) *Link {
+	link := &Link{Frames: make(chan Frame), port: port}
 	return link
 }
