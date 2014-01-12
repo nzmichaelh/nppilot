@@ -1,0 +1,42 @@
+Bugs
+====
+1. The servo output is noisy.
+   Not too bad, but you can hear the servo dithering and see it on the
+   scope.  Not surprising as it's interrupt derrived.
+
+2. The rover side halts after ~30s.
+   Seems to have cleared after changing the serial port read to all
+   bytes instead of 1 by 1.
+
+3. Communication is unreliable until reflashed.
+   Running avrdude flash makes all frames come through.  Before that
+   only short ones do.  Could be the port settings or AVR speed.
+
+4. Lacking logging.
+   Log all the inputs and outputs.  Was turned down due to #2.
+
+Thoughts on Go
+==============
+No generics is messy:
+ 1. Can't have a min/max/abs that work on any numeric types.
+ 2. Can't easily pick float32 vs float64 based on the application as
+ you have to redo everything else.
+
+I'd like nullable types for things like inputs that may be missing.
+Having no generics makes implementing an alternative harder.
+
+No default argument values.  I'd like to do a 'CheckClose(a, b,
+epsilon=0.01)' but you either need to supply epsilon everywhere or do
+a CheckClose and CheckClose2.
+
+No operator overloading.
+
+Built in types are special.  You can do len(MyOwnType) and instead
+need MyOwnType.Len().
+
+Explicit casting.  This is OK, but it's weird to need to cast an int
+to a float to multiply it by another float.
+
+select across channels is nice.
+
+The %+v struct-with-field-names formatter is nice.
