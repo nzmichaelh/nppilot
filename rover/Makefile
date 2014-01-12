@@ -15,8 +15,10 @@ all: $(APP)
 $(APP): $(SRC) $(EXTERNAL:%=src/%)
 	go build $(APP).go
 
-run: $(APP)
+push: $(APP)
 	scp $< blue:~
+
+run: push
 	ssh -t blue ./$<
 
 clean:

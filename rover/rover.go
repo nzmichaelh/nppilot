@@ -53,22 +53,22 @@ func main() {
 	gps := gps.New()
 	go gps.Watch(openPort(*gpsPort, 57600))
 
-	expvar.Publish("gps", expvar.Func(func() interface{} { return gps }))
+	expvar.Publish("gps", expvar.Func(func() interface{} { return *gps }))
 
-	link := link.New()
-	go link.Watch(openPort(*linkPort, 38400))
+	link := link.New(openPort(*linkPort, 38400))
+	go link.Watch()
 
-	expvar.Publish("link", expvar.Func(func() interface{} { return link }))
+	expvar.Publish("link", expvar.Func(func() interface{} { return link.Stats }))
 
-	pid := rover.PID{Kp: 0, Ki: 0.1, Kd: 0,
-		UMax: 0.5, UMin: 0.5, TiLimit: 0.5}
+	pid := rover.PID{Kp: 0, Ki: 0.2, Kd: 0,
+		UMax: 0.5, UMin: 0.0, TiLimit: 1000}
 	controller := &rover.SpeedController{PID: pid}
 	expvar.Publish("controller", expvar.Func(func() interface{} { return controller }))
 
-	supervisor := &rover.Supervisor{GPS: gps, Link: link, Controller: controller}
-	go supervisor.Run()
+	driver := &rover.Driver{GPS: gps, Link: link, Controller: controller}
+	go driver.Run()
 
-	expvar.Publish("state", expvar.Func(func() interface{} { return supervisor.Status }))
+	expvar.Publish("state", expvar.Func(func() interface{} { return driver.Status }))
 
 	log.Fatal(http.ListenAndServe(*httpServer, nil))
 }
