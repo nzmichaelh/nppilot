@@ -36,51 +36,6 @@ type Link struct {
 	port io.ReadWriter
 }
 
-type Heartbeat struct {
-	Code     uint8
-	Version  uint8
-	DeviceId uint8
-}
-
-type Input struct {
-	Code      uint8
-	Reference uint8
-	Channels  [6]int8
-}
-
-type Pong struct {
-	Code uint8
-}
-
-type Request struct {
-	Code      uint8
-	Requested uint8
-}
-
-type Version struct {
-	Code    uint8
-	Version [18]byte
-}
-
-type State struct {
-	Code  uint8
-	Flags uint8
-}
-
-type Demand struct {
-	Code     uint8
-	Flags    uint8
-	Channels [6]int8
-}
-
-type Counters struct {
-	Code     uint8
-	Demands  uint8
-	Sent     uint8
-	Received uint8
-	RxErrors uint8
-}
-
 var now time.Time
 
 func init() {
@@ -104,7 +59,7 @@ func checksum(frame []byte) byte {
 	return byte(sum1 ^ sum2)
 }
 
-func make_message(code byte) interface{} {
+func makeMessage(code byte) interface{} {
 	switch code {
 	case 'h':
 		return &Heartbeat{}
@@ -131,7 +86,7 @@ func (link *Link) dispatch(frame []byte) {
 		length := len(frame) - 1
 		sum := checksum(frame[:length])
 		code := frame[0]
-		msg := make_message(code)
+		msg := makeMessage(code)
 
 		switch {
 		case sum != frame[length]:
@@ -158,8 +113,7 @@ func (link *Link) dispatch(frame []byte) {
 
 func (link *Link) Watch() {
 	got := make([]byte, 128)
-	frame := make([]byte, 0)
-	rx := make([]byte, 0)
+	frame := &bytes.Buffer{}
 
 	var xor byte
 
@@ -170,22 +124,20 @@ func (link *Link) Watch() {
 		}
 
 		for _, ch := range got[:n] {
-			rx = append(rx, ch)
 			switch ch {
 			case Mark:
-				link.dispatch(frame)
-				frame = make([]byte, 0)
-				rx = make([]byte, 0)
+				link.dispatch(frame.Bytes())
+				frame.Reset()
 			case Escape:
 				xor = Xor
 				link.Stats.Escaped += 1
 			default:
-				frame = append(frame, ch^xor)
+				frame.WriteByte(ch ^ xor)
 				xor = 0
 
-				if len(frame) > 100 {
+				if frame.Len() > 100 {
+					frame.Reset()
 					link.Stats.Overruns += 1
-					frame = make([]byte, 0)
 				}
 			}
 		}
@@ -193,24 +145,23 @@ func (link *Link) Watch() {
 }
 
 func (link *Link) Send(msg interface{}) {
-	encoded := new(bytes.Buffer)
+	encoded := &bytes.Buffer{}
 	binary.Write(encoded, binary.LittleEndian, msg)
 	encoded.WriteByte(checksum(encoded.Bytes()))
 
-	escaped := make([]byte, 0)
-
+	escaped := &bytes.Buffer{}
 	for _, ch := range encoded.Bytes() {
 		switch ch {
 		case Mark, Escape:
-			escaped = append(escaped, Escape)
-			escaped = append(escaped, ch^Xor)
+			escaped.WriteByte(Escape)
+			escaped.WriteByte(ch ^ Xor)
 		default:
-			escaped = append(escaped, ch)
+			escaped.WriteByte(ch)
 		}
 	}
 
-	escaped = append(escaped, Mark)
-	link.port.Write(escaped)
+	escaped.WriteByte(Mark)
+	escaped.WriteTo(link.port)
 }
 
 func New(port io.ReadWriter) *Link {
