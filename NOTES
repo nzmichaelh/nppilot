@@ -8,12 +8,47 @@ Bugs
    Seems to have cleared after changing the serial port read to all
    bytes instead of 1 by 1.
 
-3. Communication is unreliable until reflashed.
+3. FIXED: Communication is unreliable until reflashed.
    Running avrdude flash makes all frames come through.  Before that
    only short ones do.  Could be the port settings or AVR speed.
 
-4. Lacking logging.
+4. FIXED: Lacking logging.
    Log all the inputs and outputs.  Was turned down due to #2.
+
+Fixes
+=====
+3.
+
+Loading calibrate and putting the scope on shows 902.7 us for 9
+bits.  Suggests FCPU = 8.31 MHz.  So the divisor should be good,
+suggesting the mode is not.
+
+After running rover, stty says:
+speed 38400 baud; line = 0;
+min = 1; time = 0;
+-brkint -imaxbel
+-opost
+-isig -icanon -echo -echoe
+
+After flashing, stty says:   
+speed 19200 baud; line = 0;
+min = 1; time = 0;
+ignbrk -brkint -icrnl -imaxbel
+-opost -onlcr
+-isig -icanon -iexten -echo -echoe -echok -echoctl -echoke
+1:0:8bf:0:3:1c:7f:15:4:0:1:0:11:13:1a:0:12:f:17:16:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0
+
+And running stty with this clears the fault.
+
+Diff: 
+ignbrk -icrnl
+-onlcr
+-iexten -echok -echoctl -echoke
+
+Shouldn't matter: ignbrk
+
+FIXED: goserial was pulling in the (broken) serial_posix.go.  Fix the
+build selectors.
 
 Thoughts on Go
 ==============
