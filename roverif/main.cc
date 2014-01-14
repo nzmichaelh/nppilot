@@ -15,6 +15,7 @@ uint8_t RoverIf::ticks_;
 uint8_t RoverIf::pwmin_cycles_;
 MinBitArray RoverIf::pending_;
 uint8_t RoverIf::pilot_supplied_;
+uint8_t RoverIf::demands_;
 
 Timer blinker_timer;
 Timer heartbeat_timer;
@@ -22,11 +23,16 @@ Timer pwmin_limiter;
 Timer state_timer;
 
 void RoverIf::update_servos(const int8_t* pdemands, bool from_pilot) {
+    Supervisor::InControl in_control = supervisor.in_control();
+    bool use_pilot = (in_control == Supervisor::InControl::Pilot);
+
     if (from_pilot) {
         pilot_supplied_ = 0;
-    }
 
-    Supervisor::InControl in_control = supervisor.in_control();
+        if (use_pilot) {
+            demands_++;
+        }
+    }
 
     for (int i = 0; i < servos.NumChannels; i++) {
         if (i == ThrottleChannel && supervisor.in_shutdown()) {
@@ -35,7 +41,7 @@ void RoverIf::update_servos(const int8_t* pdemands, bool from_pilot) {
             if (pdemands[i] > Protocol::Demand::Reserved) {
                 pilot_supplied_ |= 1 << i;
 
-                if (in_control == Supervisor::InControl::Pilot) {
+                if (use_pilot) {
                     servos.set(i, Servos::Mid + pdemands[i]);
                 }
             }
@@ -64,13 +70,12 @@ void RoverIf::fill_heartbeat(Protocol::Heartbeat* pmsg) {
         .code = Protocol::Code::Heartbeat,
         .version = 1,
         .device_id = 2,
-        .ticks = HAL::ticks,
-        .reference = (F_CPU - 8000000)/(1000000/64),
     };
 }
 
 void RoverIf::fill_pwmin(Protocol::Input* pmsg) {
     pmsg->code = Protocol::Code::Inputs;
+    pmsg->reference = (F_CPU - 8000000)/(1000000/64);
 
     for (uint8_t i = 0; i < sizeof(pmsg->channels); i++) {
         pmsg->channels[i] = pwmin.get(i);
@@ -105,6 +110,17 @@ void RoverIf::fill_state(Protocol::State* pmsg) {
 void RoverIf::fill_pong(Protocol::Pong* pmsg) {
     *pmsg = {
         .code = Protocol::Code::Pong,
+        
+    };
+}
+
+void RoverIf::fill_counters(Protocol::Counters* pmsg) {
+    *pmsg = {
+        .code = Protocol::Code::Counters,
+        .demands = demands_,
+        .sent = link.sent,
+        .received = link.received,
+        .rx_errors = link.rx_errors,
     };
 }
 
@@ -173,6 +189,7 @@ void RoverIf::tick() {
     }
     if (heartbeat_timer.tick(500)) {
         defer(Pending::Heartbeat);
+        defer(Pending::Counters);
     }
 }
 
@@ -265,7 +282,10 @@ void RoverIf::poll_pending() {
                 DISPATCH_PENDING(State, State, fill_state);
                 DISPATCH_PENDING(Heartbeat, Heartbeat, fill_heartbeat);
                 DISPATCH_PENDING(Pong, Pong, fill_pong);
+                DISPATCH_PENDING(Counters, Counters, fill_counters);
                 DISPATCH_PENDING(Version, Version, fill_version);
+            default:
+                assert(false);
             }
         }
     }
@@ -280,6 +300,7 @@ void RoverIf::poll() {
 
 void RoverIf::init() {
     static_assert(HAL::TicksPerSecond >= 100, "Tick rate is too low.");
+    static_assert(int(Pending::Max) <= 8, "Too many Pending entries.");
 
     HAL::init();
     servos.init();

@@ -10,6 +10,7 @@ enum class Code : uint8_t {
     Version = 'v',
     Demand = 'd',
     State = 's',
+    Counters = 'c',
 };
 
 struct Generic {
@@ -20,8 +21,6 @@ struct Heartbeat {
 
     uint8_t version;
     uint8_t device_id;
-    uint8_t ticks;
-    int8_t reference;
 };
 
 struct State {
@@ -37,6 +36,16 @@ struct State {
     Flags flags;
 };
 
+struct Counters {
+    Code code;
+
+    uint8_t demands;
+
+    uint8_t sent;
+    uint8_t received;
+    uint8_t rx_errors;
+};
+
 struct Pong {
     Code code;
 };
@@ -45,6 +54,7 @@ struct Input {
     static const int8_t Missing = -128;
 
     Code code;
+    uint8_t reference;
     int8_t channels[6];
 };
 

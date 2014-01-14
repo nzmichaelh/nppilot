@@ -16,6 +16,10 @@ class Link {
     void tx_next();
     void rx_next();
 
+    uint8_t rx_errors;
+    uint8_t sent;
+    uint8_t received;
+
  private:
     static const uint8_t Mark = '\n';
     static const uint8_t Escape = '^';

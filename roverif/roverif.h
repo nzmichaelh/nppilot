@@ -36,8 +36,13 @@ class RoverIf {
         State,
         Heartbeat,
         Pong,
+        Counters,
         Version,
+
+        Max,
     };
+
+    static uint8_t demands_;
 
     static void defer(Pending event) { pending_.set(static_cast<int>(event)); }
     static bool tick_one(Timer* ptimer, int divisor);
@@ -51,6 +56,7 @@ class RoverIf {
     static void fill_pwmin(Protocol::Input* pmsg);
     static void fill_state(Protocol::State* pmsg);
     static void fill_pong(Protocol::Pong* pmsg);
+    static void fill_counters(Protocol::Counters* pmsg);
     static void fill_version(Protocol::Version* pmsg);
 
     static void handle_request(const Protocol::Request& msg);

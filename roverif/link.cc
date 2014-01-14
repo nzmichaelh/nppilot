@@ -59,6 +59,8 @@ void Link::send(uint8_t length) {
     tx_at_ = 0;
 
     enable_tx();
+
+    sent++;
 }
 
 const void* Link::peek(uint8_t* plength) {
@@ -67,6 +69,7 @@ const void* Link::peek(uint8_t* plength) {
     } else if (rx_at_ < 2) {
         // Need at least the code and checksum.
         discard();
+        rx_errors++;
         return nullptr;
     } else {
         uint8_t len = rx_at_ - 1;
@@ -74,9 +77,11 @@ const void* Link::peek(uint8_t* plength) {
 
         if (sum != rx_[len]) {
             discard();
+            rx_errors++;
             return nullptr;
         } else {
             *plength = len;
+            received++;
             return rx_;
         }
     }
