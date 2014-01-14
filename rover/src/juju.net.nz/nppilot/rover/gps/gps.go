@@ -24,15 +24,15 @@ type GGA struct {
 	Longitude     float64
 	Quality       int
 	NumSatellites int
-	HDOP          float64
+	HDOP          float32
 	Altitude      float64
 }
 
 type VTG struct {
-	TrueCourse float64
+	TrueCourse float32
 	// MagneticCourse float64
-	Speed      float64
-	SpeedInKmh float64
+	Speed      float32
+	SpeedInKmh float32
 	Mode       string
 }
 
@@ -41,8 +41,8 @@ type RMC struct {
 	Status    string
 	Latitude  float64
 	Longitude float64
-	Speed     float64
-	Track     float64
+	Speed     float32
+	Track     float32
 	Date      string
 	Mode      string
 }
@@ -104,6 +104,12 @@ func (parser *Parser) parseFloat(value string) float64 {
 	return f
 }
 
+func (parser *Parser) parseFloat32(value string) float32 {
+	f, err := strconv.ParseFloat(value, 32)
+	parser.updateError(err)
+	return float32(f)
+}
+
 func (parser *Parser) GetString(idx int) string {
 	return parser.get(idx, "")
 }
@@ -117,6 +123,13 @@ func (parser *Parser) GetFloat(idx int) float64 {
 	f, err := strconv.ParseFloat(value, 64)
 	parser.updateError(err)
 	return f
+}
+
+func (parser *Parser) GetFloat32(idx int) float32 {
+	value := parser.get(idx, "0")
+	f, err := strconv.ParseFloat(value, 32)
+	parser.updateError(err)
+	return float32(f)
 }
 
 func (parser *Parser) GetTime(idx int) float64 {
@@ -162,14 +175,14 @@ func (link *Link) decode(frame string) (msg Sentence, err error, emptyField bool
 			Longitude:     parser.GetLatLong(4),
 			Quality:       parser.GetInt(6),
 			NumSatellites: parser.GetInt(7),
-			HDOP:          parser.GetFloat(8),
+			HDOP:          parser.GetFloat32(8),
 			Altitude:      parser.GetFloat(9),
 		}
 	case "GPVTG":
 		msg = &VTG{
-			TrueCourse: parser.GetFloat(1),
-			Speed:      parser.GetFloat(5),
-			SpeedInKmh: parser.GetFloat(7),
+			TrueCourse: parser.GetFloat32(1),
+			Speed:      parser.GetFloat32(5),
+			SpeedInKmh: parser.GetFloat32(7),
 			Mode:       parser.GetString(9),
 		}
 	case "GPRMC":
@@ -178,8 +191,8 @@ func (link *Link) decode(frame string) (msg Sentence, err error, emptyField bool
 			Status:    parser.GetString(2),
 			Latitude:  parser.GetLatLong(3),
 			Longitude: parser.GetLatLong(5),
-			Speed:     parser.GetFloat(7),
-			Track:     parser.GetFloat(8),
+			Speed:     parser.GetFloat32(7),
+			Track:     parser.GetFloat32(8),
 			Date:      parser.GetString(9),
 			Mode:      parser.GetString(12),
 		}

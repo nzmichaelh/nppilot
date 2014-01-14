@@ -15,6 +15,9 @@ all: $(APP)
 $(APP): $(SRC) $(EXTERNAL:%=src/%)
 	go build -v $(APP).go
 
+test:
+	go test juju.net.nz/...
+
 push: $(APP)
 	scp $< blue:~
 

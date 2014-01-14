@@ -1,37 +1,42 @@
 package rover
 
 import (
-	"math"
+	"juju.net.nz/mathex"
 )
 
 type PID struct {
-	Kp float64
-	Ki float64
-	Kd float64
+	Kp float32
+	Ki float32
+	Kd float32
 
-	UMax    float64
-	UMin    float64
-	TiLimit float64
+	Deadband float32
 
-	ti float64
+	UMax    float32
+	UMin    float32
+	TiLimit float32
+
+	Ti float32
 }
 
 func (pid *PID) Reset() {
-	pid.ti = 0
+	pid.Ti = 0
 }
 
-func (pid *PID) Step(pv, sp, dt float64) float64 {
+func (pid *PID) Step(pv, sp, dt float32) float32 {
 	err := sp - pv
-	pid.ti += err * dt
-	pid.ti = math.Min(pid.TiLimit, math.Max(-pid.TiLimit, pid.ti))
 
-	u := pid.Kp*err + pid.Ki*pid.ti
+	pid.Ti = mathex.Clipf(
+		pid.Ti + pid.Ki * err * dt,
+		-pid.TiLimit, pid.TiLimit)
+	u := mathex.Clipf(
+		pid.Kp*err + pid.Ti,
+		pid.UMin, pid.UMax)
 
 	switch {
-	case u < pid.UMin:
-		u = pid.UMin
-	case u > pid.UMax:
-		u = pid.UMax
+	case pid.Deadband == 0:
+		break
+	case u > pid.Deadband * 0.1:
+		u += pid.Deadband
 	}
 
 	return u

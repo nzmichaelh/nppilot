@@ -60,8 +60,11 @@ func main() {
 
 	expvar.Publish("link", expvar.Func(func() interface{} { return link.Stats }))
 
-	pid := rover.PID{Kp: 0, Ki: 0.2, Kd: 0,
-		UMax: 0.5, UMin: 0.0, TiLimit: 1000}
+	pid := &rover.PID{
+		Kp: 0, Ki: 0.2, Kd: 0,
+		UMax: 0.5, UMin: 0.0, TiLimit: 0.2,
+		Deadband: 0.11,
+	}
 	controller := &rover.SpeedController{PID: pid}
 	expvar.Publish("controller", expvar.Func(func() interface{} { return controller }))
 

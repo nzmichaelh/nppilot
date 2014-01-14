@@ -9,6 +9,7 @@ import (
 import (
 	"juju.net.nz/nppilot/rover/gps"
 	"juju.net.nz/nppilot/rover/link"
+	"juju.net.nz/mathex"
 )
 
 const (
@@ -37,9 +38,9 @@ type GPS struct {
 	// Longitude in decimal degrees.
 	Longitude float64
 	// Speed in m/s.
-	Speed float64
+	Speed float32
 	// Heading in radians from -PI to PI.
-	Track float64
+	Track float32
 	// Metres north from the reference.
 	North float64
 	// Metres east from the reference.
@@ -52,14 +53,14 @@ type Input struct {
 	// Current switch position from 0..2.  -1 means unknown.
 	Switch int
 
-	Steering float64
-	Throttle float64
-	Dial     float64
+	Steering float32
+	Throttle float32
+	Dial     float32
 }
 
 type Demand struct {
-	Steering float64
-	Throttle float64
+	Steering float32
+	Throttle float32
 }
 
 // The merged status of all of the inputs and sensors.
@@ -81,7 +82,7 @@ type Driver struct {
 	rmcSeen    Timeout
 	ggaSeen    Timeout
 	inputSeen  Timeout
-	inputScale float64
+	inputScale float32
 
 	refOk          bool
 	latitudeRef    float64
@@ -90,7 +91,7 @@ type Driver struct {
 	longitudeScale float64
 }
 
-func headingToRad(heading float64) float64 {
+func headingToRad(heading float32) float32 {
 	if heading > 180 {
 		return (heading - 360) * (math.Pi / 360)
 	} else {
@@ -140,14 +141,14 @@ func (d *Driver) sentence(sentence gps.Sentence) {
 	}
 }
 
-func scaleInput(input int8, reference float64) float64 {
+func scaleInput(input int8, reference float32) float32 {
 	switch {
 	case reference <= 0:
 		return Missing
 	case input <= Missing:
 		return Missing
 	default:
-		return float64(input) * reference
+		return float32(input) * reference
 	}
 }
 
@@ -155,7 +156,7 @@ func (d *Driver) input(msg *link.Input) {
 	d.inputSeen.Start(time.Second)
 
 	fcpu := 8000000 + int(msg.Reference)*(1000000/64)
-	d.inputScale = Prescaler * 1000 * 2 / float64(fcpu)
+	d.inputScale = Prescaler * 1000 * 2 / float32(fcpu)
 
 	d.Status.Input.Steering = scaleInput(msg.Channels[SteeringChannel], d.inputScale)
 	d.Status.Input.Throttle = scaleInput(msg.Channels[ThrottleChannel], d.inputScale)
@@ -204,14 +205,14 @@ func (d *Driver) checkAll() {
 	d.Status.Allowed = true
 }
 
-func (d *Driver) toDemand(v float64) int8 {
+func (d *Driver) toDemand(v float32) int8 {
 	switch {
 	case d.inputScale <= 0:
 		return Missing
 	case v < -10:
 		return Missing
 	}
-	v = math.Max(-0.9, math.Min(0.9, v))
+	v = mathex.Clipf(v, -0.95, 0.95)
 	return int8(v / d.inputScale)
 }
 
@@ -226,8 +227,8 @@ func (d *Driver) step() {
 	msg.Channels[ThrottleChannel] = d.toDemand(demand.Throttle)
 
 	d.Link.Send(msg)
-//	log.Printf("driver: demand: %T %+v\n", demand, demand)
-//	log.Printf("driver: sent: %T %+v\n", msg, msg)
+	log.Printf("driver: demand: %T %+v\n", demand, demand)
+	log.Printf("driver: sent: %T %+v\n", msg, msg)
 }
 
 func (d *Driver) Run() {

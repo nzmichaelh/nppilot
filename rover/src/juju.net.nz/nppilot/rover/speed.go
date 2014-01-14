@@ -1,7 +1,7 @@
 package rover
 
 type SpeedController struct {
-	PID PID
+	PID *PID
 }
 
 func (s *SpeedController) Step(status *Status) *Demand {
@@ -15,7 +15,7 @@ func (s *SpeedController) Step(status *Status) *Demand {
 	if status.Input.Switch <= 0 {
 		s.PID.Reset()
 	} else {
-		var sp float64 = 0
+		var sp float32 = 0
 
 		switch status.Input.Switch {
 		case 1:
