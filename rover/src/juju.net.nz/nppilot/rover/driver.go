@@ -119,14 +119,14 @@ func (d *Driver) rmc(msg *gps.RMC) {
 		d.updateRef()
 	}
 
-//	log.Printf("driver: sentence: %T %+v\n", msg, msg)
+	log.Printf("driver: sentence: %T %+v\n", msg, msg)
 }
 
 func (d *Driver) gga(msg *gps.GGA) {
 	d.ggaSeen.Start(time.Second)
 	d.Status.GPS.NumSatellites = msg.NumSatellites
 
-//	log.Printf("driver: sentence: %T %+v\n", msg, msg)
+	log.Printf("driver: sentence: %T %+v\n", msg, msg)
 }
 
 func (d *Driver) sentence(sentence gps.Sentence) {
@@ -136,7 +136,7 @@ func (d *Driver) sentence(sentence gps.Sentence) {
 	case *gps.GGA:
 		d.gga(sentence.(*gps.GGA))
 	default:
-//		log.Printf("driver: frame: %T", sentence)
+		log.Printf("driver: sentence: %T", sentence)
 	}
 }
 
@@ -154,6 +154,9 @@ func scaleInput(input int8, reference float64) float64 {
 func (d *Driver) input(msg *link.Input) {
 	d.inputSeen.Start(time.Second)
 
+	fcpu := 8000000 + int(msg.Reference)*(1000000/64)
+	d.inputScale = Prescaler * 1000 * 2 / float64(fcpu)
+
 	d.Status.Input.Steering = scaleInput(msg.Channels[SteeringChannel], d.inputScale)
 	d.Status.Input.Throttle = scaleInput(msg.Channels[ThrottleChannel], d.inputScale)
 	d.Status.Input.Dial = scaleInput(msg.Channels[DialChannel], d.inputScale)
@@ -168,13 +171,10 @@ func (d *Driver) input(msg *link.Input) {
 		d.Status.Input.Switch = 2
 	}
 
-//	log.Printf("driver: frame: %T %+v\n", msg, msg)
+	log.Printf("driver: frame: %T %+v\n", msg, msg)
 }
 
 func (d *Driver) heartbeat(msg *link.Heartbeat) {
-	fcpu := 8000000 + int(msg.Reference)*(1000000/64)
-	d.inputScale = Prescaler * 1000 * 2 / float64(fcpu)
-
 	log.Printf("driver: frame: %T %+v\n", msg, msg)
 }
 
@@ -185,7 +185,7 @@ func (d *Driver) frame(frame link.Frame) {
 	case *link.Heartbeat:
 		d.heartbeat(frame.(*link.Heartbeat))
 	default:
-		log.Printf("driver: frame: %T", frame)
+		log.Printf("driver: frame: %T %+v\n", frame, frame)
 	}
 }
 

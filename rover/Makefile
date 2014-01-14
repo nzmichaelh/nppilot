@@ -13,16 +13,16 @@ export GOPATH
 all: $(APP)
 
 $(APP): $(SRC) $(EXTERNAL:%=src/%)
-	go build $(APP).go
+	go build -v $(APP).go
 
 push: $(APP)
 	scp $< blue:~
 
 run: push
-	ssh -t blue ./$<
+	ssh -t blue ./$(APP)
 
 clean:
-	rm -rf $(APP) $(EXTERNAL:%=src/%)
+	rm -rf $(APP) pkg
 
 src/%:
 	go get $*
