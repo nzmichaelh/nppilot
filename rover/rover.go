@@ -20,6 +20,11 @@ var gpsPort = flag.String("gps_port", "/dev/ttyO1", "GPS port.")
 var linkPort = flag.String("link_port", "/dev/ttyO4", "Link port.")
 var httpServer = flag.String("http_server", ":8080", "HTTP server address.")
 var stubPorts = flag.Bool("stub_ports", false, "Stub out missing serial ports.")
+var controllerName = flag.String("controller", "speed", "Controller to run.")
+var kp = flag.Float64("kp", 0.0, "Proportional gain.")
+var ki = flag.Float64("ki", 0.2, "Integral gain.")
+var umax = flag.Float64("umax", 0.5, "Max controller drive.")
+var tilimit = flag.Float64("tilimit", 0.2, "Integral limit.")
 
 type StubReadWriter struct {
 }
@@ -51,27 +56,35 @@ func main() {
 	flag.Parse()
 
 	gps := gps.New()
-	go gps.Watch(openPort(*gpsPort, 57600))
-
 	expvar.Publish("gps", expvar.Func(func() interface{} { return *gps }))
 
 	link := link.New(openPort(*linkPort, 38400))
-	go link.Watch()
-
 	expvar.Publish("link", expvar.Func(func() interface{} { return link.Stats }))
 
 	pid := &rover.PID{
-		Kp: 0, Ki: 0.2, Kd: 0,
-		UMax: 0.5, UMin: 0.0, TiLimit: 0.2,
+		Kp: float32(*kp), Ki: float32(*ki), Kd: 0,
+		UMax: float32(*umax), UMin: 0.0,
+		TiLimit: float32(*tilimit),
 		Deadband: 0.11,
 	}
-	controller := &rover.SpeedController{PID: pid}
+
+	var controller rover.Controller
+
+	switch *controllerName {
+	case "speed":
+		controller = &rover.SpeedController{PID: pid}
+	case "sysident":
+		controller = &rover.SysIdentController{}
+	default:
+		
+	}
 	expvar.Publish("controller", expvar.Func(func() interface{} { return controller }))
 
 	driver := &rover.Driver{GPS: gps, Link: link, Controller: controller}
-	go driver.Run()
-
 	expvar.Publish("state", expvar.Func(func() interface{} { return driver.Status }))
 
-	log.Fatal(http.ListenAndServe(*httpServer, nil))
+	go gps.Watch(openPort(*gpsPort, 57600))
+	go link.Watch()
+	go http.ListenAndServe(*httpServer, nil)
+	driver.Run()
 }

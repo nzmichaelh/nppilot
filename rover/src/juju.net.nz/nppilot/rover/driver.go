@@ -77,7 +77,7 @@ type Driver struct {
 
 	GPS        *gps.Link
 	Link       *link.Link
-	Controller *SpeedController
+	Controller Controller
 
 	rmcSeen    Timeout
 	ggaSeen    Timeout

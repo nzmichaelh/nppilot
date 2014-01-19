@@ -21,7 +21,7 @@ func (s *SpeedController) Step(status *Status) *Demand {
 		case 1:
 			sp = 0
 		case 2:
-			sp = 10 / 3.6
+			sp = 17.5 / 3.6
 		}
 
 		oi := s.PID.Ki
