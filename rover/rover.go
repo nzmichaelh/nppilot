@@ -21,9 +21,9 @@ var linkPort = flag.String("link_port", "/dev/ttyO4", "Link port.")
 var httpServer = flag.String("http_server", ":8080", "HTTP server address.")
 var stubPorts = flag.Bool("stub_ports", false, "Stub out missing serial ports.")
 var controllerName = flag.String("controller", "speed", "Controller to run.")
-var kp = flag.Float64("kp", 0.0, "Proportional gain.")
-var ki = flag.Float64("ki", 0.2, "Integral gain.")
-var umax = flag.Float64("umax", 0.5, "Max controller drive.")
+var kp = flag.Float64("kp", 0.05, "Proportional gain.")
+var ki = flag.Float64("ki", 0.01, "Integral gain.")
+var umax = flag.Float64("umax", 1.0, "Max controller drive.")
 var tilimit = flag.Float64("tilimit", 0.2, "Integral limit.")
 
 type StubReadWriter struct {
