@@ -22,22 +22,19 @@ func (pid *PID) Reset() {
 	pid.Ti = 0
 }
 
-func (pid *PID) Step(pv, sp, dt float32) float32 {
-	err := sp - pv
-
+func (pid *PID) Step(err, dt float32) float32 {
 	pid.Ti = mathex.Clipf(
-		pid.Ti + pid.Ki * err * dt,
+		pid.Ti+pid.Ki*err*dt,
 		-pid.TiLimit, pid.TiLimit)
-	u := mathex.Clipf(
-		pid.Kp*err + pid.Ti,
-		pid.UMin, pid.UMax)
+	u := pid.Kp*err+pid.Ti
+	minimum := pid.Deadband * 0.1
 
-	switch {
-	case pid.Deadband == 0:
-		break
-	case u > pid.Deadband * 0.1:
+	if u > minimum {
 		u += pid.Deadband
+	} else if u < -minimum {
+		u -= pid.Deadband
 	}
 
+	u = mathex.Clipf(u, pid.UMin, pid.UMax)
 	return u
 }

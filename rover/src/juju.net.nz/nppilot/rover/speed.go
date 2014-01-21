@@ -26,7 +26,7 @@ func (s *SpeedController) Step(status *Status) *Demand {
 
 		oi := s.PID.Ki
 		s.PID.Ki = oi * (status.Input.Dial + 1)
-		u := s.PID.Step(status.GPS.Speed, sp, Dt)
+		u := s.PID.Step(sp - status.GPS.Speed, Dt)
 		s.PID.Ki = oi
 
 		demand.Throttle = u
