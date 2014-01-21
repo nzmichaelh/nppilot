@@ -13,6 +13,7 @@ import (
 	"juju.net.nz/nppilot/rover"
 	"juju.net.nz/nppilot/rover/gps"
 	"juju.net.nz/nppilot/rover/link"
+	"juju.net.nz/nppilot/rover/button"
 	"github.com/tarm/goserial"
 )
 
@@ -24,7 +25,9 @@ var controllerName = flag.String("controller", "speed", "Controller to run.")
 var kp = flag.Float64("kp", 0.05, "Proportional gain.")
 var ki = flag.Float64("ki", 0.01, "Integral gain.")
 var umax = flag.Float64("umax", 1.0, "Max controller drive.")
+var umin = flag.Float64("umin", 0.0, "Minimum controller drive.")
 var tilimit = flag.Float64("tilimit", 0.2, "Integral limit.")
+var deadband = flag.Float64("deadband", 0.11, "Deadband.")
 
 type StubReadWriter struct {
 }
@@ -63,9 +66,10 @@ func main() {
 
 	pid := &rover.PID{
 		Kp: float32(*kp), Ki: float32(*ki), Kd: 0,
-		UMax: float32(*umax), UMin: 0.0,
+		UMax: float32(*umax),
+		UMin: float32(*umin),
 		TiLimit: float32(*tilimit),
-		Deadband: 0.11,
+		Deadband: float32(*deadband),
 	}
 
 	var controller rover.Controller
@@ -73,6 +77,8 @@ func main() {
 	switch *controllerName {
 	case "speed":
 		controller = &rover.SpeedController{PID: pid}
+	case "heading":
+		controller = &rover.HeadingController{PID: pid}
 	case "sysident":
 		controller = &rover.SysIdentController{}
 	default:
@@ -80,7 +86,14 @@ func main() {
 	}
 	expvar.Publish("controller", expvar.Func(func() interface{} { return controller }))
 
-	driver := &rover.Driver{GPS: gps, Link: link, Controller: controller}
+	driver := &rover.Driver{
+		GPS: gps,
+		Link: link,
+		Controller: controller,
+		Switch: button.New(),
+	}
+	go driver.Switch.Watch()
+
 	expvar.Publish("state", expvar.Func(func() interface{} { return driver.Status }))
 
 	go gps.Watch(openPort(*gpsPort, 57600))
