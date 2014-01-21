@@ -1,6 +1,8 @@
 APP = rover
 PKG = juju.net.nz/nppilot/$(APP)
-EXTERNAL = github.com/tarm/goserial
+EXTERNAL = \
+	github.com/tarm/goserial \
+	github.com/golang/glog
 
 SRC = \
 	$(wildcard src/$(PKG)/*/*.go) \
