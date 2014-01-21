@@ -17,7 +17,23 @@ func (c *HeadingController) Step(status *Status) *Demand {
 	// 	s.PID.Reset()
 	// 	return demand
 	// }
-	pv := status.Input.Dial*3
+	pv := status.GPS.Track
+
+	switch {
+	case status.Input.Steering < -0.5:
+		pv -= math.Pi
+	case status.Input.Steering < -0.25:
+		pv -= math.Pi/2
+	case status.Input.Steering > 0.5:
+		pv += math.Pi
+	case status.Input.Steering > 0.25:
+		pv += math.Pi/2
+	}
+	if pv > math.Pi {
+		pv -= math.Pi*2
+	} else if pv < -math.Pi {
+		pv += math.Pi*2
+	}
 
 	switch status.Input.Switch {
 	case 1:
@@ -29,10 +45,10 @@ func (c *HeadingController) Step(status *Status) *Demand {
 		} else if err < -math.Pi {
 			err += 2*math.Pi
 		}
-//		oi := c.PID.Ki
-//		c.PID.Ki = oi * (status.Input.Dial + 1)
+		oi := c.PID.Ki
+		c.PID.Ki = oi * (status.Input.Dial + 1)
 		u := c.PID.Step(err, Dt)
-//		c.PID.Ki = oi
+		c.PID.Ki = oi
 
 		demand.Steering = u
 	default:
