@@ -1,7 +1,6 @@
 package rover
 
 import (
-	"log"
 	"math"
 	"time"
 )
@@ -9,7 +8,9 @@ import (
 import (
 	"juju.net.nz/nppilot/rover/gps"
 	"juju.net.nz/nppilot/rover/link"
+	"juju.net.nz/nppilot/rover/button"
 	"juju.net.nz/mathex"
+	"github.com/golang/glog"
 )
 
 const (
@@ -79,6 +80,10 @@ type Driver struct {
 	Link       *link.Link
 	Controller Controller
 
+	Switch *button.Button
+
+	recorder Recorder
+
 	rmcSeen    Timeout
 	ggaSeen    Timeout
 	inputSeen  Timeout
@@ -120,14 +125,14 @@ func (d *Driver) rmc(msg *gps.RMC) {
 		d.updateRef()
 	}
 
-	log.Printf("driver: sentence: %T %+v\n", msg, msg)
+	glog.V(2).Infof("sentence: %T %+v\n", msg, msg)
 }
 
 func (d *Driver) gga(msg *gps.GGA) {
 	d.ggaSeen.Start(time.Second)
 	d.Status.GPS.NumSatellites = msg.NumSatellites
 
-	log.Printf("driver: sentence: %T %+v\n", msg, msg)
+	glog.V(2).Infof("sentence: %T %+v\n", msg, msg)
 }
 
 func (d *Driver) sentence(sentence gps.Sentence) {
@@ -137,7 +142,7 @@ func (d *Driver) sentence(sentence gps.Sentence) {
 	case *gps.GGA:
 		d.gga(sentence.(*gps.GGA))
 	default:
-		log.Printf("driver: sentence: %T", sentence)
+		glog.V(2).Infof("sentence: %T", sentence)
 	}
 }
 
@@ -171,12 +176,12 @@ func (d *Driver) input(msg *link.Input) {
 	default:
 		d.Status.Input.Switch = 2
 	}
-
-	log.Printf("driver: frame: %T %+v\n", msg, msg)
+	d.Switch.Level <- d.Status.Input.Switch
+	glog.V(2).Infof("frame: %T %+v\n", msg, msg)
 }
 
 func (d *Driver) heartbeat(msg *link.Heartbeat) {
-	log.Printf("driver: frame: %T %+v\n", msg, msg)
+	glog.V(2).Infof("frame: %T %+v\n", msg, msg)
 }
 
 func (d *Driver) frame(frame link.Frame) {
@@ -186,8 +191,12 @@ func (d *Driver) frame(frame link.Frame) {
 	case *link.Heartbeat:
 		d.heartbeat(frame.(*link.Heartbeat))
 	default:
-		log.Printf("driver: frame: %T %+v\n", frame, frame)
+		glog.V(2).Infof("frame: %T %+v\n", frame, frame)
 	}
+}
+
+func (d *Driver) button(event *button.Event) {
+	d.recorder.Switch(event)
 }
 
 func (d *Driver) checkAll() {
@@ -227,12 +236,13 @@ func (d *Driver) step() {
 	msg.Channels[ThrottleChannel] = d.toDemand(demand.Throttle)
 
 	d.Link.Send(msg)
-	log.Printf("driver: demand: %T %+v\n", demand, demand)
-	log.Printf("driver: sent: %T %+v\n", msg, msg)
+	glog.V(2).Infof("demand: %T %+v\n", demand, demand)
+	glog.V(2).Infof("sent: %T %+v\n", msg, msg)
 }
 
 func (d *Driver) Run() {
 	tick := time.Tick(time.Millisecond * (Dt*1000))
+	heartbeat := time.Tick(time.Second*5)
 
 	for {
 		select {
@@ -240,9 +250,13 @@ func (d *Driver) Run() {
 			d.sentence(sentence)
 		case frame := <-d.Link.Frames:
 			d.frame(frame)
+		case event := <-d.Switch.Event:
+			d.button(event)
 		case <-tick:
 			d.checkAll()
 			d.step()
+		case <-heartbeat:
+			glog.V(1).Infoln("heartbeat")
 		}
 	}
 }
