@@ -10,6 +10,17 @@ type HeadingController struct {
 	sp float32
 }
 
+func HeadingErr(sp, pv float32) float32 {
+	err := sp - pv
+	if err > math.Pi {
+		err -= 2*math.Pi
+	} else if err < -math.Pi {
+		err += 2*math.Pi
+	}
+
+	return err
+}
+
 func (c *HeadingController) Step(status *Status) *Demand {
 	demand := &Demand{Missing, Missing}
 
@@ -39,12 +50,7 @@ func (c *HeadingController) Step(status *Status) *Demand {
 	case 1:
 		c.sp = pv
 	case 2:
-		err := c.sp - pv
-		if err > math.Pi {
-			err -= 2*math.Pi
-		} else if err < -math.Pi {
-			err += 2*math.Pi
-		}
+		err := HeadingErr(c.sp, pv)
 		oi := c.PID.Ki
 		c.PID.Ki = oi * (status.Input.Dial + 1)
 		u := c.PID.Step(err, Dt)

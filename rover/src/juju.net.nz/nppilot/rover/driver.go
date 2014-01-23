@@ -71,6 +71,8 @@ type Status struct {
 
 	GPS GPS
 	Input Input
+
+	Recorder *Recorder
 }
 
 type Driver struct {

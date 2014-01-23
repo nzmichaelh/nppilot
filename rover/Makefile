@@ -18,7 +18,7 @@ $(APP): $(SRC) $(EXTERNAL:%=src/%)
 	go build -v $(APP).go
 
 test:
-	go test juju.net.nz/...
+	go test -v juju.net.nz/...
 
 push: $(APP)
 	scp $< blue:~
