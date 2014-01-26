@@ -2,7 +2,6 @@ package main
 
 import (
 	"expvar"
-	"flag"
 	"io"
 	"log"
 	"net/http"
@@ -15,19 +14,52 @@ import (
 	"juju.net.nz/nppilot/rover/link"
 	"juju.net.nz/nppilot/rover/button"
 	"github.com/tarm/goserial"
+	"github.com/jessevdk/go-flags"
 )
 
-var gpsPort = flag.String("gps_port", "/dev/ttyO1", "GPS port.")
-var linkPort = flag.String("link_port", "/dev/ttyO4", "Link port.")
-var httpServer = flag.String("http_server", ":8080", "HTTP server address.")
-var stubPorts = flag.Bool("stub_ports", false, "Stub out missing serial ports.")
-var controllerName = flag.String("controller", "speed", "Controller to run.")
-var kp = flag.Float64("kp", 0.05, "Proportional gain.")
-var ki = flag.Float64("ki", 0.01, "Integral gain.")
-var umax = flag.Float64("umax", 1.0, "Max controller drive.")
-var umin = flag.Float64("umin", 0.0, "Minimum controller drive.")
-var tilimit = flag.Float64("tilimit", 0.2, "Integral limit.")
-var deadband = flag.Float64("deadband", 0.11, "Deadband.")
+type HeadingOptions struct {
+	Kp float32 `long:"heading_kp" default:"0.4"`
+	Ki float32 `long:"heading_ki"`
+	Kd float32 `long:"heading_kd"`
+	UMax float32 `long:"heading_umax" default:"0.8"`
+	UMin float32 `long:"heading_umin" default:"-0.8"`
+	TiLimit float32 `long:"heading_tilimit" default:"0.2"`
+	Deadband float32 `long:"heading_deadband"`
+}
+
+type SpeedOptions struct {
+	Kp float32 `long:"speed_kp" default:"0.05"`
+	Ki float32 `long:"speed_ki" default:"0.01"`
+	Kd float32 `long:"speed_kd"`
+	UMax float32 `long:"speed_umax" default:"1.0"`
+	UMin float32 `long:"speed_umin" default:"0.0"`
+	TiLimit float32 `long:"speed_tilimit" default:"0.3"`
+	Deadband float32 `long:"speed_deadband" default:"0.11"`
+}
+
+type DistanceOptions struct {
+	Kp float32 `long:"distance_kp" default:"1"`
+	Ki float32 `long:"distance_ki"`
+	Kd float32 `long:"distance_kd"`
+	UMax float32 `long:"distance_umax" default:"6"` // 22 km/h
+	UMin float32 `long:"distance_umin" default:"3"` // 11 km/h
+	TiLimit float32 `long:"distance_tilimit"`
+	Deadband float32 `long:"distance_deadband"`
+
+	TargetSize float32 `long:"target_size" default:"2"`
+}
+
+type Options struct {
+	GPSPort string `long:"gps_port" default:"/dev/ttyO1"`
+	LinkPort string `long:"link_port" default:"/dev/ttyO4"`
+	HTTPServer string `long:"http_server" default:":8080"`
+	StubPorts bool `long:"stub_ports" default:"false"`
+	Controller string `long:"controller" default:"speed"`
+
+	Heading HeadingOptions `group:"Heading"`
+	Speed SpeedOptions `group:"Speed"`
+	Distance DistanceOptions `group:"Distance"`
+}
 
 type StubReadWriter struct {
 }
@@ -47,7 +79,7 @@ func openPort(name string, baud int) io.ReadWriter {
 
 	if err == nil {
 		return port
-	} else if *stubPorts {
+	} else if options.StubPorts {
 		return &StubReadWriter{}
 	} else {
 		log.Fatal(err)
@@ -55,32 +87,66 @@ func openPort(name string, baud int) io.ReadWriter {
 	}
 }
 
+var options Options
+var parser = flags.NewParser(&options, flags.Default)
+
 func main() {
-	flag.Parse()
+	if _, err := parser.Parse(); err != nil {
+                log.Fatal("invalid arguments.")
+        }
 
 	gps := gps.New()
 	expvar.Publish("gps", expvar.Func(func() interface{} { return *gps }))
 
-	link := link.New(openPort(*linkPort, 38400))
+	link := link.New(openPort(options.LinkPort, 38400))
 	expvar.Publish("link", expvar.Func(func() interface{} { return link.Stats }))
 
-	pid := &rover.PID{
-		Kp: float32(*kp), Ki: float32(*ki), Kd: 0,
-		UMax: float32(*umax),
-		UMin: float32(*umin),
-		TiLimit: float32(*tilimit),
-		Deadband: float32(*deadband),
+	headingPID := &rover.PID{
+		Kp: options.Heading.Kp,
+		Ki: options.Heading.Ki,
+		Kd: options.Heading.Kd,
+		UMax: options.Heading.UMax,
+		UMin: options.Heading.UMin,
+		TiLimit: options.Heading.TiLimit,
+		Deadband: options.Heading.Deadband,
 	}
+	speedPID := &rover.PID{
+		Kp: options.Speed.Kp,
+		Ki: options.Speed.Ki,
+		Kd: options.Speed.Kd,
+		UMax: options.Speed.UMax,
+		UMin: options.Speed.UMin,
+		TiLimit: options.Speed.TiLimit,
+		Deadband: options.Speed.Deadband,
+	}
+	distancePID := &rover.PID{
+		Kp: options.Distance.Kp,
+		Ki: options.Distance.Ki,
+		Kd: options.Distance.Kd,
+		UMax: options.Distance.UMax,
+		UMin: options.Distance.UMin,
+		TiLimit: options.Distance.TiLimit,
+		Deadband: options.Distance.Deadband,
+	}
+
+	recorder := rover.NewRecorder()
 
 	var controller rover.Controller
 
-	switch *controllerName {
-	case "speed":
-		controller = &rover.SpeedController{PID: pid}
-	case "heading":
-		controller = &rover.HeadingController{PID: pid}
+	switch options.Controller {
 	case "sysident":
 		controller = &rover.SysIdentController{}
+	case "speed":
+		controller = &rover.SpeedController{PID: speedPID}
+	case "heading":
+		controller = &rover.HeadingController{PID: headingPID}
+	case "waypoint":
+		controller = &rover.WaypointController{
+			Heading: headingPID,
+			Speed: speedPID,
+			Distance: distancePID,
+			TargetSize: options.Distance.TargetSize,
+		}
 	default:
 		
 	}
@@ -92,12 +158,14 @@ func main() {
 		Controller: controller,
 		Switch: button.New(),
 	}
+	driver.Status.Recorder = recorder
+
 	go driver.Switch.Watch()
 
 	expvar.Publish("state", expvar.Func(func() interface{} { return driver.Status }))
 
-	go gps.Watch(openPort(*gpsPort, 57600))
+	go gps.Watch(openPort(options.GPSPort, 57600))
 	go link.Watch()
-	go http.ListenAndServe(*httpServer, nil)
+	go http.ListenAndServe(options.HTTPServer, nil)
 	driver.Run()
 }
