@@ -34,3 +34,9 @@ func (s *SpeedController) Step(status *Status) *Demand {
 
 	return demand
 }
+
+func (w *SpeedController) GPS(gps *GPS) {
+}
+
+func (w *SpeedController) Event(entered State) {
+}

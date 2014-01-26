@@ -24,7 +24,7 @@ type Recorder struct {
 
 func NewRecorder() *Recorder {
 	return &Recorder{
-		State: Drive,
+		State: Record,
 		Points: make([]Point, 0),
 	}
 }
@@ -71,11 +71,11 @@ func (r *Recorder) GPS(gps *GPS) {
 	r.position.X = gps.Latitude
 	r.position.Y = gps.Longitude
 
-	switch {
-	case gps.Ok && (r.State == None || r.State == Drive):
-		r.Clear()
-		r.State = Record
-	case !gps.Ok:
-		r.State = Drive
-	}
+	// switch {
+	// case gps.Ok && (r.State == None || r.State == Drive):
+	// 	r.Clear()
+	// 	r.State = Record
+	// case !gps.Ok:
+	// 	r.State = Drive
+	// }
 }

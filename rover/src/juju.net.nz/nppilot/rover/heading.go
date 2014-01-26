@@ -2,6 +2,7 @@ package rover
 
 import (
 	"math"
+	"github.com/golang/glog"
 )
 
 type HeadingController struct {
@@ -32,13 +33,13 @@ func (c *HeadingController) Step(status *Status) *Demand {
 
 	switch {
 	case status.Input.Steering < -0.5:
-		pv -= math.Pi
-	case status.Input.Steering < -0.25:
 		pv -= math.Pi/2
+	case status.Input.Steering < -0.25:
+		pv -= math.Pi/4
 	case status.Input.Steering > 0.5:
-		pv += math.Pi
-	case status.Input.Steering > 0.25:
 		pv += math.Pi/2
+	case status.Input.Steering > 0.25:
+		pv += math.Pi/4
 	}
 	if pv > math.Pi {
 		pv -= math.Pi*2
@@ -56,10 +57,17 @@ func (c *HeadingController) Step(status *Status) *Demand {
 		u := c.PID.Step(err, Dt)
 		c.PID.Ki = oi
 
+		glog.V(2).Infof("heading: sp %v pv %v err %v u %v\n", c.sp, pv, err, u)
 		demand.Steering = u
 	default:
 		c.PID.Reset()
 	}
 
 	return demand
+}
+
+func (w *HeadingController) GPS(gps *GPS) {
+}
+
+func (w *HeadingController) Event(entered State) {
 }

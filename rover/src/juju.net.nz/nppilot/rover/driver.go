@@ -84,8 +84,6 @@ type Driver struct {
 
 	Switch *button.Button
 
-	recorder Recorder
-
 	rmcSeen    Timeout
 	ggaSeen    Timeout
 	inputSeen  Timeout
@@ -100,9 +98,9 @@ type Driver struct {
 
 func headingToRad(heading float32) float32 {
 	if heading > 180 {
-		return (heading - 360) * (math.Pi / 360)
+		return (heading - 360) * (math.Pi / 180)
 	} else {
-		return heading * (math.Pi / 360)
+		return heading * (math.Pi / 180)
 	}
 }
 
@@ -198,7 +196,10 @@ func (d *Driver) frame(frame link.Frame) {
 }
 
 func (d *Driver) button(event *button.Event) {
-	d.recorder.Switch(event)
+	next := d.Status.Recorder.Switch(event)
+	if next != None {
+		d.Controller.Event(next)
+	}
 }
 
 func (d *Driver) checkAll() {
@@ -228,6 +229,9 @@ func (d *Driver) toDemand(v float32) int8 {
 }
 
 func (d *Driver) step() {
+	d.Controller.GPS(&d.Status.GPS)
+	d.Status.Recorder.GPS(&d.Status.GPS)
+
 	demand := d.Controller.Step(&d.Status)
 	msg := &link.Demand{Code: 'd', Flags: 1}
 
@@ -259,6 +263,7 @@ func (d *Driver) Run() {
 			d.step()
 		case <-heartbeat:
 			glog.V(1).Infoln("heartbeat")
+			glog.Flush()
 		}
 	}
 }

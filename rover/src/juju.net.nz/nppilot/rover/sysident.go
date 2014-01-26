@@ -23,3 +23,9 @@ func (s *SysIdentController) Step(status *Status) *Demand {
 
 	return demand
 }
+
+func (w *SysIdentController) GPS(gps *GPS) {
+}
+
+func (w *SysIdentController) Event(entered State) {
+}

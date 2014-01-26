@@ -1,13 +1,16 @@
 package rover
 
+import (
+	"github.com/golang/glog"
+)
+
 type WaypointController struct {
-	Heading PID
-	Speed   PID
-	Distance PID
+	Heading *PID
+	Speed   *PID
+	Distance *PID
 	TargetSize float32
 
 	position Point
-	recorder *Recorder
 	waypoint int
 	scale    Point
 }
@@ -19,7 +22,8 @@ func (w *WaypointController) Step(status *Status) *Demand {
 	if status.Recorder.State != Run {
 		return demand
 	}
-	if w.waypoint >= len(points) {
+	if w.waypoint < 0 || w.waypoint >= len(points) {
+		w.waypoint = -1
 		return demand
 	}
 
@@ -30,11 +34,12 @@ func (w *WaypointController) Step(status *Status) *Demand {
 
 	distance := float32(diff.Mag())
 	heading := float32(diff.Angle())
-
 	speed := w.Distance.Step(distance, Dt)
 	demand.Throttle = w.Speed.Step(speed - status.GPS.Speed, Dt)
 	demand.Steering = w.Heading.Step(
 		HeadingErr(heading, status.GPS.Track), Dt)
+
+	glog.V(2).Infof("waypoint: n:%v distance:%v heading:%v speed:%v\n", w.waypoint, distance, heading, speed)
 
 	if distance < w.TargetSize {
 		w.waypoint++
@@ -53,5 +58,8 @@ func (w *WaypointController) Event(entered State) {
 	case Run:
 		w.scale.X = LatitudeLen(w.position.X)
 		w.scale.Y = LongitudeLen(w.position.Y)
+		if w.waypoint < 0 {
+			w.waypoint = 0
+		}
 	}
 }
