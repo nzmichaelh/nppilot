@@ -128,7 +128,12 @@
 
 /* onboard LED is used to indicate, that the bootloader was entered (3x flashing) */
 /* if monitor functions are included, LED goes on after monitor was entered */
-#if defined __AVR_ATmega128__ || defined __AVR_ATmega1280__
+#if defined ROVERIF
+#define LED_DDR  DDRD
+#define LED_PORT PORTD
+#define LED_PIN  PIND
+#define LED      PIND7
+#elif defined __AVR_ATmega128__ || defined __AVR_ATmega1280__
 /* Onboard LED is connected to pin PB7 (e.g. Crumb128, PROBOmega128, Savvy128, Arduino Mega) */
 #define LED_DDR  DDRB
 #define LED_PORT PORTB
@@ -583,7 +588,7 @@ int main(void)
 #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega1281__)
 				while(bit_is_set(EECR,EEPE));			//Wait for previous EEPROM writes to complete
 #else
-				while(bit_is_set(EECR,EEWE));			//Wait for previous EEPROM writes to complete
+				while(bit_is_set(EECR,EEPE));			//Wait for previous EEPROM writes to complete
 #endif
 				asm volatile(
 					 "clr	r17		\n\t"	//page_word_count

@@ -49,7 +49,7 @@ STK500-2 = $(STK500) -d$(MCU_TARGET) -ms -q -lCF -LCF -cUSB -I200kHz -s -wt
 
 
 OBJ        = $(PROGRAM).o
-OPTIMIZE   = -O2
+OPTIMIZE   = -Os
 
 DEFS       = 
 LIBS       =
@@ -114,6 +114,18 @@ pro16_isp: HFUSE = DD
 pro16_isp: LFUSE = C6
 pro16_isp: EFUSE = 00
 pro16_isp: isp
+
+roverif: TARGET = roverif_12MHz
+roverif: CFLAGS += '-DMAX_TIME_COUNT=F_CPU>>4' '-DNUM_LED_FLASHES=1' '-DWATCHDOG_MODS' '-DROVERIF' '-DBAUD_RATE=57600' '-DDOUBLE_SPEED'
+roverif: AVR_FREQ = 12000000L
+roverif: $(PROGRAM)_roverif_12MHz.hex
+
+roverif_isp: roverif
+roverif_isp: TARGET = roverif_12MHz
+roverif_isp: HFUSE = DE
+roverif_isp: LFUSE = C6
+roverif_isp: EFUSE = 00
+roverif_isp: isp
 
 pro20: TARGET = pro_20mhz
 pro20: CFLAGS += '-DMAX_TIME_COUNT=F_CPU>>4' '-DNUM_LED_FLASHES=1' '-DWATCHDOG_MODS'
@@ -221,4 +233,3 @@ clean:
 
 %.bin: %.elf
 	$(OBJCOPY) -j .text -j .data -O binary $< $@
-	
