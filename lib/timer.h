@@ -40,7 +40,7 @@ class Timer {
     static const uint8_t Reserved = 0xFE;
 
     uint8_t to_ticks(int ms) {
-        return (HAL::TicksPerSecond * ms + 500) / 1000;
+        return ((uint32_t)HAL::TicksPerSecond * ms + 500) / 1000;
     }
 
     bool tick_internal(uint8_t reload = Stopped);
