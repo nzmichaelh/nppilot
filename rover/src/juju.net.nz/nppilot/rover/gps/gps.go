@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/golang/glog"
 )
 
 var matcher *regexp.Regexp
@@ -47,13 +49,17 @@ type RMC struct {
 	Mode      string
 }
 
-type Link struct {
+type Stats struct {
 	Received         uint
 	UnrecognisedType uint
 	ChecksumError    uint
 	ParseError       uint
 	EmptyFields      uint
 	DecodeError      uint
+}
+
+type Link struct {
+	Stats Stats
 
 	Sentences chan Sentence
 }
@@ -209,25 +215,25 @@ func (link *Link) dispatch(frame *bytes.Buffer) {
 	parts := matcher.FindStringSubmatch(frame.String())
 
 	if len(parts) == 0 {
-		link.ParseError += 1
+		link.Stats.ParseError += 1
 		return
 	}
 
-	link.Received += 1
+	link.Stats.Received += 1
 	sum := checksum(parts[1])
 	got, err := strconv.ParseUint(parts[2], 16, 8)
 
 	if err != nil || uint8(got) != sum {
-		link.ChecksumError += 1
+		link.Stats.ChecksumError += 1
 		return
 	}
 
 	msg, err, emptyField := link.decode(parts[1])
 
 	if err != nil {
-		link.DecodeError += 1
+		link.Stats.DecodeError += 1
 	} else if emptyField {
-		link.EmptyFields += 1
+		link.Stats.EmptyFields += 1
 	} else if msg != nil {
 		link.Sentences <- msg
 	}
@@ -257,7 +263,7 @@ func (link *Link) Read(port io.Reader) {
 			}
 		}
 		if n == 0 || err != nil {
-			break
+			glog.Fatal("error while reading %v, %v", n, err)
 		}
 	}
 }
