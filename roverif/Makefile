@@ -1,15 +1,15 @@
 APP = roverif
 DEVICE     = atmega168
-CLOCK      = 8300000
+CLOCK      = 12000000
 #PROGRAMMER = -c signalyzer-lite
-PROGRAMMER = -c arduino -b 19200 -P $(PROGRAMMER_PORT)
+PROGRAMMER = -c arduino -b 57600 -P $(PROGRAMMER_PORT)
 PROGRAMMER_PORT = /dev/ttyO4
+REMOTE = blue
 
 SRC = $(wildcard *.cc)
 SRC += $(wildcard ../lib/*.cc)
 OBJ = $(SRC:%.cc=%.o)
 LIB = $(APP).a
-FUSES = -U lfuse:w:0xe2:m -U hfuse:w:0xde:m -U efuse:w:0xfe:m
 
 CROSS_COMPILE = avr-
 CC = $(CROSS_COMPILE)gcc
@@ -26,20 +26,22 @@ RESET_PIN = /sys/class/gpio/gpio9/value
 all:	$(APP).hex
 
 reset:
-	-bash -c "echo -e '1\n0\n1'" > $(RESET_PIN)
+	bash -c "echo -e '1\n0\n1'" > $(RESET_PIN)
 
-flash:	all reset
+sub-flash:
 	$(AVRDUDE) -U flash:w:$(APP).hex:i
+
+flash: all reset
 
 usb-flash: $(APP).hex
 	sudo $(HOME)/bin/micronucleus --run $<
 
 remote-flash: $(APP).hex
-	scp $< blue:~/projects/nppilot/roverif
-	ssh blue "cd ~/projects/nppilot/roverif && make flash"
+	scp $< Makefile $(REMOTE):/tmp
+	ssh $(REMOTE) make -C /tmp reset sub-flash
 
-fuse:
-	$(AVRDUDE) $(FUSES)
+ping:
+	$(AVRDUDE)
 
 style: all
 	cpplint --filter=-legal/copyright,-whitespace/semicolon,-build/include,-build/header_guard *.cc *.h ../lib/*.cc ../lib/*.h
