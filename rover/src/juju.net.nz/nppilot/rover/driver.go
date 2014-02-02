@@ -84,6 +84,8 @@ type Driver struct {
 
 	Switch *button.Button
 
+	SteeringOffset float32
+
 	rmcSeen    Timeout
 	ggaSeen    Timeout
 	inputSeen  Timeout
@@ -94,14 +96,41 @@ type Driver struct {
 	longitudeRef   float64
 	latitudeScale  float64
 	longitudeScale float64
+
+	gpsWatchdog *Watchdog
+	gpsLockWatchdog *Watchdog
+	heartbeatWatchdog *Watchdog
+	pongWatchdog *Watchdog
+	inputWatchdog *Watchdog
+}
+
+func New() *Driver {
+	d := &Driver{
+		gpsWatchdog: &Watchdog{Name: "gps"},
+		gpsLockWatchdog: &Watchdog{Name: "gpsLock"},
+		heartbeatWatchdog: &Watchdog{Name: "heartbeat"},
+		pongWatchdog: &Watchdog{Name: "pong"},
+		inputWatchdog: &Watchdog{Name: "input"},
+	}
+
+	return d
+}
+
+func Always(source string, arg interface{}) {
+	glog.V(1).Infof("%s: %T %+v", source, arg, arg)
+}
+
+func Info(source string, arg interface{}) {
+	glog.V(2).Infof("%s: %T %+v", source, arg, arg)
 }
 
 func headingToRad(heading float32) float32 {
-	if heading > 180 {
-		return (heading - 360) * (math.Pi / 180)
-	} else {
-		return heading * (math.Pi / 180)
+	heading *= math.Pi/180
+
+	if heading > math.Pi {
+		heading -= 2*math.Pi
 	}
+	return heading
 }
 
 func (s *Driver) updateRef() {
@@ -115,6 +144,8 @@ func (s *Driver) updateRef() {
 
 func (d *Driver) rmc(msg *gps.RMC) {
 	d.rmcSeen.Start(time.Second)
+	d.gpsWatchdog.Feed()
+
 	d.Status.GPS.Time = msg.Time
 	d.Status.GPS.Latitude = msg.Latitude
 	d.Status.GPS.Longitude = msg.Longitude
@@ -125,14 +156,20 @@ func (d *Driver) rmc(msg *gps.RMC) {
 		d.updateRef()
 	}
 
-	glog.V(2).Infof("sentence: %T %+v\n", msg, msg)
+	Info("sentence", msg)
+	Info("rmc", d.Status.GPS)
 }
 
 func (d *Driver) gga(msg *gps.GGA) {
 	d.ggaSeen.Start(time.Second)
 	d.Status.GPS.NumSatellites = msg.NumSatellites
 
-	glog.V(2).Infof("sentence: %T %+v\n", msg, msg)
+	Info("sentence", msg)
+}
+
+func (d *Driver) vtg(msg *gps.VTG) {
+	d.gpsWatchdog.Feed()
+	Info("sentence", msg)
 }
 
 func (d *Driver) sentence(sentence gps.Sentence) {
@@ -141,8 +178,10 @@ func (d *Driver) sentence(sentence gps.Sentence) {
 		d.rmc(sentence.(*gps.RMC))
 	case *gps.GGA:
 		d.gga(sentence.(*gps.GGA))
+	case *gps.VTG:
+		d.vtg(sentence.(*gps.VTG))
 	default:
-		glog.V(2).Infof("sentence: %T", sentence)
+		Info("sentence", sentence)
 	}
 }
 
@@ -159,8 +198,12 @@ func scaleInput(input int8, reference float32) float32 {
 
 func (d *Driver) input(msg *link.Input) {
 	d.inputSeen.Start(time.Second)
+	d.inputWatchdog.Feed()
 
-	fcpu := 8000000 + int(msg.Reference)*(1000000/64)
+	fcpu := 8000000
+	if msg.Reference == 2 {
+		fcpu = 12000000
+	}
 	d.inputScale = Prescaler * 1000 * 2 / float32(fcpu)
 
 	d.Status.Input.Steering = scaleInput(msg.Channels[SteeringChannel], d.inputScale)
@@ -177,11 +220,15 @@ func (d *Driver) input(msg *link.Input) {
 		d.Status.Input.Switch = 2
 	}
 	d.Switch.Level <- d.Status.Input.Switch
-	glog.V(2).Infof("frame: %T %+v\n", msg, msg)
+	Info("input", d.Status.Input)
 }
 
 func (d *Driver) heartbeat(msg *link.Heartbeat) {
-	glog.V(2).Infof("frame: %T %+v\n", msg, msg)
+	d.heartbeatWatchdog.Feed()
+}
+
+func (d *Driver) pong(msg *link.Pong) {
+	d.pongWatchdog.Feed()
 }
 
 func (d *Driver) frame(frame link.Frame) {
@@ -190,9 +237,15 @@ func (d *Driver) frame(frame link.Frame) {
 		d.input(frame.(*link.Input))
 	case *link.Heartbeat:
 		d.heartbeat(frame.(*link.Heartbeat))
-	default:
-		glog.V(2).Infof("frame: %T %+v\n", frame, frame)
+	case *link.Pong:
+		d.pong(frame.(*link.Pong))
 	}
+	Info("frame", frame)
+}
+
+func (d *Driver) ping() {
+	glog.V(2).Infof("ping")
+	d.Link.Send(&link.Request{Code: 'R', Requested: 'p'})
 }
 
 func (d *Driver) button(event *button.Event) {
@@ -224,7 +277,7 @@ func (d *Driver) toDemand(v float32) int8 {
 	case v < -10:
 		return Missing
 	}
-	v = mathex.Clipf(v, -0.95, 0.95)
+	v = mathex.Clipf(v, -1, 1)
 	return int8(v / d.inputScale)
 }
 
@@ -238,17 +291,34 @@ func (d *Driver) step() {
 	for i := range msg.Channels {
 		msg.Channels[i] = Missing
 	}
-	msg.Channels[SteeringChannel] = d.toDemand(demand.Steering)
+	msg.Channels[SteeringChannel] = d.toDemand(demand.Steering + d.SteeringOffset)
 	msg.Channels[ThrottleChannel] = d.toDemand(demand.Throttle)
 
 	d.Link.Send(msg)
-	glog.V(2).Infof("demand: %T %+v\n", demand, demand)
-	glog.V(2).Infof("sent: %T %+v\n", msg, msg)
+	Info("demand", demand)
+	Info("sent", msg)
+}
+
+func (d *Driver) checkWatchdogs() {
+	d.gpsWatchdog.Check()
+	d.gpsLockWatchdog.Check()
+	d.heartbeatWatchdog.Check()
+	d.pongWatchdog.Check()
+	d.inputWatchdog.Check()
+}
+
+func (d *Driver) localHeartbeat() {
+	d.ping()
+	d.checkWatchdogs()
+	Always("link", d.Link.Stats)
+	Always("gps", d.GPS.Stats)
+	glog.V(1).Infof("heartbeat")
+	glog.Flush()
 }
 
 func (d *Driver) Run() {
 	tick := time.Tick(time.Millisecond * (Dt*1000))
-	heartbeat := time.Tick(time.Second*5)
+	heartbeat := time.Tick(time.Second*1)
 
 	for {
 		select {
@@ -262,8 +332,7 @@ func (d *Driver) Run() {
 			d.checkAll()
 			d.step()
 		case <-heartbeat:
-			glog.V(1).Infoln("heartbeat")
-			glog.Flush()
+			d.localHeartbeat()
 		}
 	}
 }

@@ -1,7 +1,6 @@
 package rover
 
 import (
-	"github.com/golang/glog"
 )
 
 type WaypointController struct {
@@ -13,6 +12,13 @@ type WaypointController struct {
 	position Point
 	waypoint int
 	scale    Point
+}
+
+type WaypointState struct {
+	Waypoint int
+	Distance float32
+	Heading float32
+	Speed float32
 }
 
 func (w *WaypointController) Step(status *Status) *Demand {
@@ -39,7 +45,7 @@ func (w *WaypointController) Step(status *Status) *Demand {
 	demand.Steering = w.Heading.Step(
 		HeadingErr(heading, status.GPS.Track), Dt)
 
-	glog.V(2).Infof("waypoint: n:%v distance:%v heading:%v speed:%v\n", w.waypoint, distance, heading, speed)
+	Info("waypoint", &WaypointState{Waypoint: w.waypoint, Distance: distance, Heading: heading, Speed: speed})
 
 	if distance < w.TargetSize {
 		w.waypoint++
