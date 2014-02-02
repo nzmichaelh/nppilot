@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint>
+#include "hal.h"
 
 class PWMIn {
  public:
@@ -9,7 +9,7 @@ class PWMIn {
     static const int NumChannels = 6;
 
     static const int8_t Missing = -128;
-    static const int8_t Full = 55;
+    static const int8_t Full = F_CPU/HAL::Prescaler/1000/2;
 
     void init();
     void expire();

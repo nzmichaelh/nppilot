@@ -12,3 +12,11 @@ Bandwidth
 https://docs.google.com/spreadsheet/ccc?key=0Alf_rWdmv9JidFBhNGc3M1VKR2ExOTBCTXhnN3JXdXc&usp=sharing
 
 38400 baud gives 11 % utilisation at a 50 ms update rate.
+
+PWM timing
+==========
+Signal goes from 1 ms to 2 ms.  Prefer an 8 bit value with a small
+amount of margin for setting up the output compares.
+
+So 1 ms should be ~256 count.  12 MHz / 1000 / 256 = ~47.  A prescaler
+of 64 gives 187 count over 1 ms.  Sounds good.

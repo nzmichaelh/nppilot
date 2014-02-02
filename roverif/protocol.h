@@ -52,6 +52,7 @@ struct Pong {
 
 struct Input {
     static const int8_t Missing = -128;
+    static const uint8_t Reference12MHz = 2;
 
     Code code;
     uint8_t reference;

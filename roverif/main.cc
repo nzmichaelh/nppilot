@@ -75,7 +75,7 @@ void RoverIf::fill_heartbeat(Protocol::Heartbeat* pmsg) {
 
 void RoverIf::fill_pwmin(Protocol::Input* pmsg) {
     pmsg->code = Protocol::Code::Inputs;
-    pmsg->reference = (F_CPU - 8000000)/(1000000/64);
+    pmsg->reference = Protocol::Input::Reference12MHz;
 
     for (uint8_t i = 0; i < sizeof(pmsg->channels); i++) {
         pmsg->channels[i] = pwmin.get(i);
@@ -235,6 +235,8 @@ void RoverIf::poll_ticks() {
     if (ticks_ != HAL::ticks) {
         ticks_++;
 
+        static_assert((HAL::TickPrescaler & (HAL::TickPrescaler-1)) == 0,
+                      "Tick prescaler must be a power of 2.");
         if ((ticks_ & (HAL::TickPrescaler-1)) == 0) {
             tick();
         }
@@ -299,7 +301,10 @@ void RoverIf::poll() {
 }
 
 void RoverIf::init() {
+    // Need at least 10 ms resolution.
     static_assert(HAL::TicksPerSecond >= 100, "Tick rate is too low.");
+    // Need to count to at least half a second.
+    static_assert(HAL::TicksPerSecond <= 256*2, "Tick rate is too high.");
     static_assert(int(Pending::Max) <= 8, "Too many Pending entries.");
 
     HAL::init();

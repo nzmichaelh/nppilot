@@ -19,5 +19,5 @@ class HAL {
     static const int RedPin = 7;
     static const int GreenPin = 5;
 
-    static const uint32_t BaudRate = 38400;
+    static const uint32_t BaudRate = 57600;
 };
