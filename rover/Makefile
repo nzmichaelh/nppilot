@@ -10,13 +10,15 @@ SRC = \
 	$(wildcard src/$(PKG)/*.go) \
 	$(wildcard *.go)
 
+GOFLAGS = -v -compiler gccgo --gccgoflags \"-static-libgo\"
+
 GOPATH = $(shell pwd)
 export GOPATH
 
 all: $(APP)
 
 $(APP): $(SRC) $(EXTERNAL:%=src/%)
-	go build -v $(APP).go
+	go build $(GOFLAGS) $(APP).go
 
 test:
 	go test -v juju.net.nz/...
