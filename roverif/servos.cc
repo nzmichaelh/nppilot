@@ -28,7 +28,7 @@ Servos::Servos()
 
     static_assert(NumChannels % 2 == 0, "Need an even number of channels.");
 
-    for (volatile uint8_t& position : position_) {
+    for (volatile int8_t& position : position_) {
         position = Mid;
     }
 }
@@ -53,7 +53,7 @@ void Servos::init() {
     TIMSK0 = _BV(OCIE0A) | _BV(OCIE0B) | _BV(TOIE0);
 }
 
-void Servos::set(uint8_t channel, uint8_t position) {
+void Servos::set(uint8_t channel, int8_t position) {
     position_[channel] = position;
 }
 
@@ -69,14 +69,15 @@ inline void Servos::overflow() {
             PORTC = 0;
         }
 
-        OCR0A = 254 - position_[at+0]/2;
-        OCR0B = 254 - Offset - position_[at+1]/2;
+        // TODO(michaelh): check that this is cheap.
+        OCR0A = -(uint8_t)((position_[at+0] + Bias)/2);
+        OCR0B = -(uint8_t)((position_[at+1] + Bias)/2);
 
         at_ = at;
         state_ = State::Centre;
     } else {
-        OCR0A = position_[at+0]/2;
-        OCR0B = position_[at+1]/2 - Offset;
+        OCR0A = (uint8_t)((position_[at+0] + Bias + 1)/2);
+        OCR0B = (uint8_t)((position_[at+1] + Bias + 1)/2);
 
         state_ = State::Start;
     }

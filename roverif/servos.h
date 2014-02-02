@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include "hal.h"
 
 /** Drives a bunch of servos.
@@ -20,12 +19,10 @@ class Servos {
     /** Update the width of one channel.  See Low, Mid, and High for
         some of the limits.
     */
-    void set(uint8_t channel, uint8_t position);
+    void set(uint8_t channel, int8_t position);
 
-    static const uint8_t Low = 100*F_CPU/HAL::Prescaler/1000/100;
-    static const uint8_t Mid = 150*F_CPU/HAL::Prescaler/1000/100;
-    // TODO(michaelh): hack to handle the 8.3 MHz clock.
-    static const uint8_t High = 196*F_CPU/HAL::Prescaler/1000/100;
+    static const int8_t Mid = 0;
+    static const uint8_t Width = F_CPU/HAL::Prescaler/1000;
 
     /** Interrupt handlers. */
     void overflow();
@@ -38,11 +35,10 @@ class Servos {
         Centre,
     };
 
-    /** How much to offset the second channel. */
-    static const int Offset = Low/3;
+    static const uint16_t Bias = F_CPU/HAL::Prescaler*3/2/1000;
 
     uint8_t at_;
     State state_;
-    volatile uint8_t position_[NumChannels];
+    volatile int8_t position_[NumChannels];
     static const uint8_t pins_[NumChannels];
 };
