@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
-	"log"
 	"time"
+
+	"github.com/golang/glog"
 )
 
 const (
@@ -65,7 +66,7 @@ func makeMessage(code byte) interface{} {
 		return &Heartbeat{}
 	case 'i':
 		return &Input{}
-	case 'P':
+	case 'p':
 		return &Pong{}
 	case 'v':
 		return &Version{}
@@ -119,27 +120,29 @@ func (link *Link) Watch() {
 
 	for {
 		n, err := link.port.Read(got)
-		if err != nil {
-			log.Fatal(err)
-		}
 
-		for _, ch := range got[:n] {
-			switch ch {
-			case Mark:
-				link.dispatch(frame.Bytes())
-				frame.Reset()
-			case Escape:
-				xor = Xor
-				link.Stats.Escaped += 1
-			default:
-				frame.WriteByte(ch ^ xor)
-				xor = 0
-
-				if frame.Len() > 100 {
+		if n > 0 {
+			for _, ch := range got[:n] {
+				switch ch {
+				case Mark:
+					link.dispatch(frame.Bytes())
 					frame.Reset()
-					link.Stats.Overruns += 1
+				case Escape:
+					xor = Xor
+					link.Stats.Escaped += 1
+				default:
+					frame.WriteByte(ch ^ xor)
+					xor = 0
+					
+					if frame.Len() > 100 {
+						frame.Reset()
+						link.Stats.Overruns += 1
+					}
 				}
 			}
+		}
+		if n == 0 || err != nil {
+			glog.Fatal("error while reading %v, %v", n, err)
 		}
 	}
 }
