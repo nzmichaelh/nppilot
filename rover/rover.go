@@ -18,11 +18,11 @@ import (
 )
 
 type HeadingOptions struct {
-	Kp float32 `long:"heading_kp" default:"0.4"`
-	Ki float32 `long:"heading_ki"`
+	Kp float32 `long:"heading_kp" default:"4"`
+	Ki float32 `long:"heading_ki" default:"0.0"`
 	Kd float32 `long:"heading_kd"`
-	UMax float32 `long:"heading_umax" default:"0.8"`
-	UMin float32 `long:"heading_umin" default:"-0.8"`
+	UMax float32 `long:"heading_umax" default:"0.5"`
+	UMin float32 `long:"heading_umin" default:"-0.5"`
 	TiLimit float32 `long:"heading_tilimit" default:"0.2"`
 	Deadband float32 `long:"heading_deadband"`
 }
@@ -54,8 +54,9 @@ type Options struct {
 	LinkPort string `long:"link_port" default:"/dev/ttyO4"`
 	HTTPServer string `long:"http_server" default:":8080"`
 	StubPorts bool `long:"stub_ports" default:"false"`
-	Controller string `long:"controller" default:"speed"`
+	Controller string `long:"controller" default:"heading"`
 
+	SteeringOffset float32 `long:"steering_offset" default:"0"`
 	Heading HeadingOptions `group:"Heading"`
 	Speed SpeedOptions `group:"Speed"`
 	Distance DistanceOptions `group:"Distance"`
@@ -98,7 +99,7 @@ func main() {
 	gps := gps.New()
 	expvar.Publish("gps", expvar.Func(func() interface{} { return *gps }))
 
-	link := link.New(openPort(options.LinkPort, 38400))
+	link := link.New(openPort(options.LinkPort, 57600))
 	expvar.Publish("link", expvar.Func(func() interface{} { return link.Stats }))
 
 	headingPID := &rover.PID{
@@ -152,12 +153,12 @@ func main() {
 	}
 	expvar.Publish("controller", expvar.Func(func() interface{} { return controller }))
 
-	driver := &rover.Driver{
-		GPS: gps,
-		Link: link,
-		Controller: controller,
-		Switch: button.New(),
-	}
+	driver := rover.New()
+	driver.GPS = gps
+	driver.Link = link
+	driver.Controller = controller
+	driver.Switch = button.New()
+	driver.SteeringOffset = options.SteeringOffset
 	driver.Status.Recorder = recorder
 
 	go driver.Switch.Watch()
