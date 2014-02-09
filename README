@@ -1,0 +1,15 @@
+nppilot - the never-complete autopilot
+======================================
+
+A ground based autopilot for making my RC car do interesting things at
+speed.
+
+The current version consists of a ATMEGA based I/O board, BeagleBone
+Black command board, and a GPS mounted in a lunch box on a 1/10th
+scale buggy.  The I/O board handles the remote control input and servo
+drive and runs the safety overrides.  The command board runs the PID
+controllers and waypoint plotting and, as an experiment, is written
+written in Go.
+
+-- Michael Hope  <michaelh@juju.net.nz>
+   https://juju.net.nz/src/
