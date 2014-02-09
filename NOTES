@@ -7,6 +7,9 @@ Bugs
 2. The rover side halts after ~30s.
    Seems to have cleared after changing the serial port read to all
    bytes instead of 1 by 1.
+   Nope, still present.  Perhaps noise causing a break or other error?
+   Added a watchdog to see if it's the inputs
+   Checked against pyserial.  Match fine.
 
 3. FIXED: Communication is unreliable until reflashed.
    Running avrdude flash makes all frames come through.  Before that
@@ -75,3 +78,11 @@ to a float to multiply it by another float.
 select across channels is nice.
 
 The %+v struct-with-field-names formatter is nice.
+
+No easy test for 'x in map'.
+
+Strings are a funny mix of bytes and runes.  Most work on bytes, but
+range works on runes.  Popping a rune from a string is messy.
+
+The built-in types are good and generic and do things like return
+specific polymorphisim.  You can't do that on anything else.
