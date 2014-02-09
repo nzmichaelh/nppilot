@@ -141,8 +141,8 @@ func (link *Link) Watch() {
 				}
 			}
 		}
-		if n == 0 || err != nil {
-			glog.Fatal("error while reading %v, %v", n, err)
+		if n < 0 || err != nil {
+			glog.Fatalf("error while reading %v, %v", n, err)
 		}
 	}
 }

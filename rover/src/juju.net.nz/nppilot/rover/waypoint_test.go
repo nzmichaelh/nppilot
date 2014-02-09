@@ -13,13 +13,13 @@ const (
 
 func setup() (w *WaypointController, gps *GPS, r *Recorder, s *Status) {
 	w = &WaypointController{
-		Heading: PID{
+		Heading: &PID{
 			Kp: 1.0, UMax: 100, UMin: -100,
 		},
-		Speed: PID{
+		Speed: &PID{
 			Kp: 1.0, UMax: 100, UMin: -100,
 		},
-		Distance: PID{
+		Distance: &PID{
 			Kp: 1.0, UMax: 100, UMin: -100,
 		},
 		TargetSize: 2,
