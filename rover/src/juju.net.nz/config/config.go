@@ -160,36 +160,49 @@ func (c *Config) Help(w io.Writer) {
 }
 
 // Print prints the parameters as a JSON dict.  Use nil for stdout.
-func (c *Config) Print(w io.Writer) {
+func (c *Config) Print(w io.Writer, compact bool) {
 	if w == nil {
 		w = os.Stdout
 	}
+	eol := "\n"
+	indent := "  "
+	if compact {
+		eol = ""
+		indent = ""
+	}
 
 	// Yay, another JSON encoder.
-	fmt.Fprintf(w, "{\n")
+	fmt.Fprintf(w, "{%s", eol)
 	for i, group := range c.groups {
-		fmt.Fprintf(w, "  %q: {\n", group.Name)
+		fmt.Fprintf(w, "%s%q: {%s", indent, group.Name, eol)
 		j := 0
 		visit(group.Values, func(name string, field reflect.Value) {
 			if j != 0 {
-				fmt.Fprintf(w, ",\n")
+				fmt.Fprintf(w, ",%s", eol)
 			}
 			j += 1
-			fmt.Fprintf(w, "    %q: ", name)
+			fmt.Fprintf(w, "%s%s%q: ", indent, indent, name)
 			switch field.Kind() {
 			case reflect.String:
-				fmt.Printf("%q", field.Interface())
+				fmt.Fprintf(w, "%q", field.Interface())
 			default:
-				fmt.Printf("%v", field.Interface())
+				fmt.Fprintf(w, "%v", field.Interface())
 			}
 		})
 		if i != len(c.groups)-1 {
-			fmt.Fprintf(w, "\n  },\n")
+			fmt.Fprintf(w, "%s%s},%s", eol, indent, eol)
 		} else {
-			fmt.Fprintf(w, "\n  }\n")
+			fmt.Fprintf(w, "%s%s}%s", eol, indent, eol)
 		}
 	}
-	fmt.Fprintf(w, "}\n")
+	fmt.Fprintf(w, "}%s", eol)
+}
+
+// Print prints the parameters as a JSON dict.  Use nil for stdout.
+func (c *Config) String() string {
+	var b bytes.Buffer
+	c.Print(&b, true)
+	return b.String()	
 }
 
 // Parse parses the string arguments and returns all errors seen.
