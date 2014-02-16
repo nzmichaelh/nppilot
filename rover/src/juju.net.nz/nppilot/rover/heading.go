@@ -4,9 +4,15 @@ import (
 	"math"
 )
 
+const (
+	GpsDt = 0.2
+	Engaged = 2
+)
+
 type HeadingController struct {
 	PID *PID
 
+	u float32
 	sp float32
 }
 
@@ -17,6 +23,8 @@ type HeadingState struct {
 	SP float32
 	PV float32
 	Err float32
+	Ti float32
+	Td float32
 	U float32
 }
 
@@ -34,6 +42,14 @@ func HeadingErr(sp, pv float32) float32 {
 func (c *HeadingController) Step(status *Status) *Demand {
 	demand := &Demand{Missing, Missing}
 
+	if status.Input.Switch == Engaged {
+		demand.Steering = c.u
+	}
+
+	return demand
+}
+
+func (c *HeadingController) GPS(status *Status) {
 	// if !status.GPS.Ok || !status.Input.Ok {
 	// 	s.PID.Reset()
 	// 	return demand
@@ -58,26 +74,20 @@ func (c *HeadingController) Step(status *Status) *Demand {
 	}
 
 	err := HeadingErr(sp, pv)
-	op := c.PID.Kp
-	c.PID.Kp = status.Input.Dial * op
-	u := c.PID.Step(err, Dt)
+	op := c.PID.Kd
+	c.PID.Kd = (status.Input.Dial+1)*5 * op
+	u := c.PID.Step(err, GpsDt)
 
-	Info("heading", &HeadingState{Switch: status.Input.Switch, Kp: c.PID.Kp, Ki: c.PID.Ki, SP: sp, PV: pv, Err: err, U:u})
-	c.PID.Kp = op
+	Info("heading", &HeadingState{Switch: status.Input.Switch, Kp: c.PID.Kp, Ki: c.PID.Ki, SP: sp, PV: pv, Err: err, Ti: c.PID.Ti, Td: c.PID.Td, U:u})
+	c.PID.Kd = op
 
-	switch status.Input.Switch {
-	case 2:
-		demand.Steering = u
-	default:
+	c.u = u
+
+	if status.Input.Switch != Engaged {
 		c.sp = pv
 		c.PID.Reset()
 	}
-
-	return demand
 }
 
-func (w *HeadingController) GPS(gps *GPS) {
-}
-
-func (w *HeadingController) Event(entered State) {
+func (c *HeadingController) Event(entered State) {
 }
