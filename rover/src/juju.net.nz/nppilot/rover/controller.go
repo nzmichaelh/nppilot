@@ -2,6 +2,6 @@ package rover
 
 type Controller interface {
 	Step(status *Status) *Demand
-	GPS(gps *GPS)
+	GPS(status *Status)
 	Event(entered State)
 }

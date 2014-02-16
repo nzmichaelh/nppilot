@@ -54,9 +54,9 @@ func (w *WaypointController) Step(status *Status) *Demand {
 	return demand
 }
 
-func (w *WaypointController) GPS(gps *GPS) {
-	w.position.X = gps.Latitude
-	w.position.Y = gps.Longitude
+func (w *WaypointController) GPS(status *Status) {
+	w.position.X = status.GPS.Latitude
+	w.position.Y = status.GPS.Longitude
 }
 
 func (w *WaypointController) Event(entered State) {
