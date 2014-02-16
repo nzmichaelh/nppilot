@@ -16,6 +16,9 @@ type PID struct {
 	TiLimit float32
 
 	Ti float32
+	Td float32
+
+	errLast float32
 }
 
 func (pid *PID) Reset() {
@@ -26,7 +29,10 @@ func (pid *PID) Step(err, dt float32) float32 {
 	pid.Ti = mathex.Clipf(
 		pid.Ti+pid.Ki*err*dt,
 		-pid.TiLimit, pid.TiLimit)
-	u := pid.Kp*err+pid.Ti
+	pid.Td = (err - pid.errLast) / dt
+	pid.errLast = err
+
+	u := pid.Kp*err + pid.Ti + pid.Kd*pid.Td
 	minimum := pid.Deadband * 0.1
 
 	if u > minimum {
