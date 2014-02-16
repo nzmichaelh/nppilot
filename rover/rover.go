@@ -68,13 +68,14 @@ func main() {
 		StubPorts: false,
 		Controller: "heading",
 		TargetSize: 2,
+		SteeringOffset: -0.1,
 	}
 	config.Add("Options", "", options)
 
 	headingPID := &rover.PID{
-		Kp: 4,
-		UMax: 0.5,
-		UMin: -0.5,
+		Kp: 1,
+		UMax: 0.3,
+		UMin: -0.3,
 		TiLimit: 0.2,
 	}
 	config.Add("Heading", "heading", headingPID)
@@ -96,7 +97,7 @@ func main() {
 	}
 	config.Add("Distance", "distance", distancePID)
 
-	logConfig := &glog.Config{}
+	logConfig := &glog.Config{Verbosity: 2, Compress: true}
 	config.Add("Logging", "log", logConfig)
 
 	if errors := config.ParseArgv(); len(errors) > 0 {
@@ -106,6 +107,7 @@ func main() {
 	}
 
 	expvar.Publish("config", config)
+	glog.Init(logConfig)
 
 	recorder := rover.NewRecorder()
 
