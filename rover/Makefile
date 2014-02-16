@@ -10,7 +10,8 @@ SRC = \
 	$(wildcard src/juju.net.nz/*/*.go) \
 	$(wildcard *.go)
 
-GOFLAGS = -v -compiler gccgo --gccgoflags \"-static-libgo\"
+GOFLAGS = -v -compiler gccgo
+#GOFLAGS += --gccgoflags \"-static-libgo\"
 
 GOPATH = $(shell pwd)
 export GOPATH
@@ -24,7 +25,7 @@ test:
 	go test -v juju.net.nz/...
 
 push: $(APP)
-	scp $< blue:~
+	rsync -zt $< blue:~
 
 run: push
 	ssh -t blue ./$(APP)
