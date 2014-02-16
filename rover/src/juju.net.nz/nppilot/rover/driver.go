@@ -156,6 +156,8 @@ func (d *Driver) rmc(msg *gps.RMC) {
 		d.updateRef()
 	}
 
+	d.Controller.GPS(&d.Status)
+
 	Info("sentence", msg)
 	Info("rmc", d.Status.GPS)
 }
@@ -282,7 +284,6 @@ func (d *Driver) toDemand(v float32) int8 {
 }
 
 func (d *Driver) step() {
-	d.Controller.GPS(&d.Status.GPS)
 	d.Status.Recorder.GPS(&d.Status.GPS)
 
 	demand := d.Controller.Step(&d.Status)
