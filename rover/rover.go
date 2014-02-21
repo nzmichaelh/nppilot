@@ -43,18 +43,16 @@ func (rw *StubReadWriter) Write(p []byte) (n int, err error) {
 }
 
 func openPort(name string, baud int, stub bool) io.ReadWriter {
-	if stub {
+	c := &serial.Config{Name: name, Baud: baud}
+	port, err := serial.OpenPort(c)
+
+	if err == nil {
+		return port
+	} else if stub {
 		return &StubReadWriter{}
 	} else {
-		c := &serial.Config{Name: name, Baud: baud}
-		port, err := serial.OpenPort(c)
-
-		if err == nil {
-			return port
-		} else {
-			log.Fatal(err)
-			return &StubReadWriter{}
-		}
+		log.Fatal(err)
+		return &StubReadWriter{}
 	}
 }
 
