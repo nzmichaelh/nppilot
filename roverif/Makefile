@@ -6,9 +6,13 @@ PROGRAMMER = -c arduino -b 57600 -P $(PROGRAMMER_PORT)
 PROGRAMMER_PORT = /dev/ttyO4
 REMOTE = blue
 
+I2CDEVLIB = ../external/i2cdevlib/Arduino
 SRC = $(wildcard *.cc)
 SRC += $(wildcard ../lib/*.cc)
+SRC += $(I2CDEVLIB)/MPU6050/MPU6050.cpp
+
 OBJ = $(SRC:%.cc=%.o)
+OBJ := $(OBJ:%.cpp=%.o)
 LIB = $(APP).a
 
 CROSS_COMPILE = avr-
@@ -17,6 +21,7 @@ CXX = $(CROSS_COMPILE)g++
 AR = $(CROSS_COMPILE)ar
 CFLAGS = -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -Wall
 CFLAGS += -I../lib -I../external/avr-stl-stubs/include -I.
+CFLAGS += -I$(I2CDEVLIB) -I$(I2CDEVLIB)/I2Cdev
 CFLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections -pipe
 #CFLAGS += -save-temps
 CXXFLAGS = $(CFLAGS) -std=gnu++11
@@ -65,4 +70,4 @@ $(LIB): $(OBJ)
 	avr-objcopy -j .text -j .data -O ihex $< $@
 
 clean:
-	rm -f $(APP).hex $(APP).elf version.h $(OBJ) *~
+	rm -f $(OBJ) *.hex *.elf version.h *.o *~
