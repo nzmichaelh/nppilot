@@ -20,4 +20,5 @@ class HAL {
     static const int GreenPin = 5;
 
     static const uint32_t BaudRate = 57600;
+    static const uint32_t I2CRate = 400000;
 };

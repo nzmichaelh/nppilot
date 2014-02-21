@@ -20,7 +20,7 @@
 */
 
 const uint8_t Servos::pins_[] = {
-    _BV(0), _BV(1), _BV(2), _BV(3), _BV(4), _BV(5),
+    _BV(0), _BV(1), _BV(2), _BV(3),
 };
 
 Servos::Servos()

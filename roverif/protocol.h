@@ -11,6 +11,7 @@ enum class Code : uint8_t {
     Demand = 'd',
     State = 's',
     Counters = 'c',
+    IMU = 'm',
 };
 
 struct Generic {
@@ -71,6 +72,13 @@ struct Demand {
     Code code;
     Flags flags;
     int8_t channels[6];
+};
+
+struct IMU {
+    Code code;
+    uint8_t id;
+    int16_t accels[3];
+    int16_t gyros[3];
 };
 
 struct Request {

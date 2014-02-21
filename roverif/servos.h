@@ -9,7 +9,7 @@
 */
 class Servos {
  public:
-    static const int NumChannels = 6;
+    static const int NumChannels = 4;
 
     Servos();
 

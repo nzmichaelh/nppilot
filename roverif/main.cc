@@ -6,8 +6,9 @@
 #include "hal.h"
 #include "version.h"
 
-PWMIn RoverIf::pwmin;
 Servos RoverIf::servos;
+PWMIn RoverIf::pwmin;
+IMU RoverIf::imu;
 Link RoverIf::link;
 Blinker RoverIf::blinker;
 Supervisor RoverIf::supervisor;
@@ -17,6 +18,7 @@ MinBitArray RoverIf::pending_;
 uint8_t RoverIf::pilot_supplied_;
 uint8_t RoverIf::demands_;
 
+Timer imu_timer;
 Timer blinker_timer;
 Timer heartbeat_timer;
 Timer pwmin_limiter;
@@ -80,6 +82,11 @@ void RoverIf::fill_pwmin(Protocol::Input* pmsg) {
     for (uint8_t i = 0; i < sizeof(pmsg->channels); i++) {
         pmsg->channels[i] = pwmin.get(i);
     }
+}
+
+bool RoverIf::fill_imu(Protocol::IMU* pmsg) {
+    pmsg->code = Protocol::Code::IMU;
+    return imu.read(pmsg);
 }
 
 template<typename T>
@@ -178,6 +185,10 @@ void Supervisor::shutdown() {
 }
 
 void RoverIf::tick() {
+    if (imu_timer.tick(50)) {
+        defer(Pending::IMU);
+    }
+
     pwmin_limiter.tick();
     RoverIf::supervisor.tick();
 
@@ -269,8 +280,15 @@ void RoverIf::poll_pwmin() {
 
 #define DISPATCH_PENDING(_code, _type, _handler) \
     case Pending::_code:                         \
-    _handler((Protocol::_type*)pmsg); \
-    link.send(sizeof(Protocol::_type)); \
+    _handler((Protocol::_type*)pmsg);            \
+    link.send(sizeof(Protocol::_type));          \
+    break
+
+#define DISPATCH_PENDINGIF(_code, _type, _handler) \
+    case Pending::_code:                           \
+    if (_handler((Protocol::_type*)pmsg)) {        \
+        link.send(sizeof(Protocol::_type));        \
+    }                                              \
     break
 
 void RoverIf::poll_pending() {
@@ -281,6 +299,7 @@ void RoverIf::poll_pending() {
             Pending next = (Pending)pending_.pop();
             switch (next) {
                 DISPATCH_PENDING(PWMIn, Input, fill_pwmin);
+                DISPATCH_PENDINGIF(IMU, IMU, fill_imu);
                 DISPATCH_PENDING(State, State, fill_state);
                 DISPATCH_PENDING(Heartbeat, Heartbeat, fill_heartbeat);
                 DISPATCH_PENDING(Pong, Pong, fill_pong);
@@ -310,6 +329,7 @@ void RoverIf::init() {
     HAL::init();
     servos.init();
     pwmin.init();
+    imu.init();
     supervisor.init();
 }
 

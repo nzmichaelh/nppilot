@@ -9,6 +9,7 @@
 #include "blinker.h"
 #include "servos.h"
 #include "minbitarray.h"
+#include "imu.h"
 
 class RoverIf {
  public:
@@ -22,6 +23,7 @@ class RoverIf {
 
     static Servos servos;
     static PWMIn pwmin;
+    static IMU imu;
     static Link link;
     static Blinker blinker;
     static Supervisor supervisor;
@@ -33,6 +35,7 @@ class RoverIf {
  private:
     enum class Pending {
         PWMIn,
+        IMU,
         State,
         Heartbeat,
         Pong,
@@ -54,6 +57,7 @@ class RoverIf {
 
     static void fill_heartbeat(Protocol::Heartbeat* pmsg);
     static void fill_pwmin(Protocol::Input* pmsg);
+    static bool fill_imu(Protocol::IMU* pmsg);
     static void fill_state(Protocol::State* pmsg);
     static void fill_pong(Protocol::Pong* pmsg);
     static void fill_counters(Protocol::Counters* pmsg);
