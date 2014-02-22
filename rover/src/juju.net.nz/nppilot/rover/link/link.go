@@ -74,6 +74,8 @@ func makeMessage(code byte) interface{} {
 		return &State{}
 	case 'c':
 		return &Counters{}
+	case 'm':
+		return &IMU{}
 	default:
 		return nil
 	}

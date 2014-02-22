@@ -59,6 +59,12 @@ type Input struct {
 	Dial     float32
 }
 
+type IMU struct {
+	Ok bool
+
+	RateOfTurn float32
+}
+
 type Demand struct {
 	Steering float32
 	Throttle float32
@@ -70,6 +76,7 @@ type Status struct {
 	Allowed bool
 
 	GPS GPS
+	IMU IMU
 	Input Input
 
 	Recorder *Recorder
@@ -102,6 +109,7 @@ type Driver struct {
 	heartbeatWatchdog *Watchdog
 	pongWatchdog *Watchdog
 	inputWatchdog *Watchdog
+	imuWatchdog *Watchdog
 }
 
 func New() *Driver {
@@ -111,6 +119,7 @@ func New() *Driver {
 		heartbeatWatchdog: &Watchdog{Name: "heartbeat"},
 		pongWatchdog: &Watchdog{Name: "pong"},
 		inputWatchdog: &Watchdog{Name: "input"},
+		imuWatchdog: &Watchdog{Name: "imu"},
 	}
 
 	return d
@@ -233,6 +242,12 @@ func (d *Driver) pong(msg *link.Pong) {
 	d.pongWatchdog.Feed()
 }
 
+func (d *Driver) imu(msg *link.IMU) {
+	d.Status.IMU.RateOfTurn = float32(-msg.Gyros[2]) * (250.0/32768 * math.Pi/180)
+	Info("imu", d.Status.IMU)
+	d.imuWatchdog.Feed()
+}
+
 func (d *Driver) frame(frame link.Frame) {
 	switch frame.(type) {
 	case *link.Input:
@@ -241,6 +256,8 @@ func (d *Driver) frame(frame link.Frame) {
 		d.heartbeat(frame.(*link.Heartbeat))
 	case *link.Pong:
 		d.pong(frame.(*link.Pong))
+	case *link.IMU:
+		d.imu(frame.(*link.IMU))
 	}
 	Info("frame", frame)
 }
@@ -306,6 +323,7 @@ func (d *Driver) checkWatchdogs() {
 	d.heartbeatWatchdog.Check()
 	d.pongWatchdog.Check()
 	d.inputWatchdog.Check()
+	d.imuWatchdog.Check()
 }
 
 func (d *Driver) localHeartbeat() {

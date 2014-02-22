@@ -44,3 +44,10 @@ type Counters struct {
 	Received uint8
 	RxErrors uint8
 }
+
+type IMU struct {
+	Code uint8
+	Id uint8
+	Accels [3]int16
+	Gyros [3]int16
+}
