@@ -25,6 +25,7 @@ test:
 	go test -v juju.net.nz/...
 
 push: $(APP)
+	rsync --size-only -l blue:/tmp/rover.* ~/log
 	rsync -zt $< blue:~
 
 run: push
