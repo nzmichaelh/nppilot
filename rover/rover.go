@@ -66,9 +66,18 @@ func main() {
 		StubPorts: false,
 		Controller: "heading",
 		TargetSize: 2,
-		SteeringOffset: -0.1,
+		SteeringOffset: -0.06,
 	}
 	config.Add("Options", "", options)
+
+	rotPID := &rover.PID{
+		Kp: 0.15,
+		Ki: 0.35,
+		UMax: 1.0,
+		UMin: -1.0,
+		TiLimit: 0.2,
+	}
+	config.Add("Rate of turn", "rot", rotPID)
 
 	headingPID := &rover.PID{
 		Kp: 1,
@@ -116,6 +125,8 @@ func main() {
 		controller = &rover.SysIdentController{}
 	case "speed":
 		controller = &rover.SpeedController{PID: speedPID}
+	case "rot":
+		controller = &rover.ROTController{PID: rotPID}
 	case "heading":
 		controller = &rover.HeadingController{PID: headingPID}
 	case "waypoint":
