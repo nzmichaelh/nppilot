@@ -27,7 +27,7 @@ enum Codes {
 };
 
 IMU::IMU()
-    : mpu_(MPU6050_ADDRESS_AD0_HIGH) {
+    : mpu_(MPU6050_ADDRESS_AD0_HIGH), good_(false) {
 }
 
 void IMU::init() {
@@ -50,6 +50,7 @@ uint8_t IMU::wait() {
 
 bool IMU::read(Protocol::IMU* pinto) {
     if (!mpu_.testConnection()) {
+        good_ = false;
         return false;
     }
 
@@ -59,7 +60,14 @@ bool IMU::read(Protocol::IMU* pinto) {
                     pinto->gyros + 0,
                     pinto->gyros + 1,
                     pinto->gyros + 2);
+    good_ = true;
     return true;
+}
+
+void IMU::check() {
+    if (!good_) {
+        init();
+    }
 }
 
 #define ERRORX(x) { dbg("err " #x "\r\n"); return -x; }

@@ -10,6 +10,7 @@ public:
 
     void init();
     bool read(Protocol::IMU* pinto);
+    void check();
 
 private:
     friend class I2Cdev;
@@ -21,5 +22,6 @@ private:
     static int8_t set_address(uint8_t device, uint8_t address);
 
     MPU6050 mpu_;
+    bool good_;
 };
 

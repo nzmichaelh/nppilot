@@ -19,6 +19,7 @@ uint8_t RoverIf::pilot_supplied_;
 uint8_t RoverIf::demands_;
 
 Timer imu_timer;
+Timer check_timer;
 Timer blinker_timer;
 Timer heartbeat_timer;
 Timer pwmin_limiter;
@@ -201,6 +202,9 @@ void RoverIf::tick() {
     if (heartbeat_timer.tick(500)) {
         defer(Pending::Heartbeat);
         defer(Pending::Counters);
+    }
+    if (check_timer.tick(500)) {
+        imu.check();
     }
 }
 
